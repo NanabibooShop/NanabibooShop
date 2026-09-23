@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>NanabibooShop</title>
+  <meta name="description" content="NanabibooShop — cho thuê đồ cosplay anime & game theo ngày. Xem lịch trống và chốt thuê qua Messenger.">
+  <meta name="theme-color" content="#F5F3FA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14111C" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23E8386D'/%3E%3Cpath d='M32 18c0-5 7-5 7 0 0 3-7 4-7 8L12 40h40L32 26' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__in">
+      <a class="brand" href="#/" aria-label="Về trang chủ">
+        <svg class="brand__hanger" viewBox="0 0 48 32" aria-hidden="true"><path d="M24 9c0-4 6-4 6 0 0 3-6 3.5-6 7L4 28h40L24 16" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="brand__name" id="brandName">NanabibooShop</span>
+      </a>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Đổi giao diện sáng/tối">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="sun" d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.7-5.7 1.4-1.4M4.9 19.1l1.4-1.4m0-11.4L4.9 4.9m14.2 14.2-1.4-1.4M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="moon" d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="app" class="wrap"></main>
+
+  <footer class="footer wrap" id="footer"></footer>
+
+  <!-- Hộp chốt thuê -->
+  <dialog class="sheet" id="bookSheet" aria-labelledby="bookTitle">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <div class="sheet__head">
+      <h2 id="bookTitle">Gửi tin nhắn chốt thuê</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Đóng">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <ol class="sheet__steps">
+      <li>Bấm <b>Sao chép</b> để copy đoạn tin nhắn bên dưới.</li>
+      <li>Mở Messenger của shop và <b>dán</b> vào khung chat rồi gửi.</li>
+      <li>Shop sẽ trả lời xác nhận lịch và hướng dẫn đặt cọc.</li>
+    </ol>
+    <label class="sr-only" for="bookText">Nội dung tin nhắn</label>
+    <textarea id="bookText" class="sheet__text" rows="11" readonly></textarea>
+    <div class="sheet__actions">
+      <button class="btn btn--ghost" type="button" id="copyBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span>Sao chép</span>
+      </button>
+      <a class="btn btn--primary" id="messengerBtn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5C6.6 2.5 2.5 6.4 2.5 11.4c0 2.7 1.2 5 3.2 6.6V21l3-1.6c1 .3 2.1.4 3.3.4 5.4 0 9.5-3.9 9.5-8.9S17.4 2.5 12 2.5Zm1 11.9-2.4-2.6-4.7 2.6 5.2-5.5 2.5 2.6 4.6-2.6-5.2 5.5Z" fill="currentColor"/></svg>
+        <span>Sao chép &amp; mở Messenger</span>
+      </a>
+    </div>
+  </dialog>
+
+  <!-- Xem ảnh lớn -->
+  <dialog class="lightbox" id="lightbox" aria-label="Xem ảnh">
+    <img id="lbImg" alt="">
+    <button class="lb-btn lb-prev" type="button" aria-label="Ảnh trước">‹</button>
+    <button class="lb-btn lb-next" type="button" aria-label="Ảnh sau">›</button>
+    <button class="lb-btn lb-close" type="button" data-close aria-label="Đóng">✕</button>
+    <p class="lb-count" id="lbCount"></p>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Luôn tải data.js mới nhất (tránh trình duyệt / GitHub giữ bản cũ) -->
+  <script>document.write('<script src="data.js?v=' + Date.now() + '"><\/script>');</script>
+  <script src="js/common.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
