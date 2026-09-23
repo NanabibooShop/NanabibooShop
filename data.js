@@ -1,23 +1,23 @@
 /* =========================================================
    DỮ LIỆU CỦA SHOP — NanabibooShop
-   Cập nhật bằng admin.html lúc 23:13:57 23/9/2026.
+   Cập nhật bằng admin.html lúc 23:27:52 23/9/2026.
    Cách dễ nhất để sửa: mở admin.html → sửa bằng form → bấm "Lưu".
    ========================================================= */
 
 window.SHOP = {
   "name": "NanabibooShop",
-  "tagline": "Tủ đồ cosplay anime & game cho thuê theo ngày",
-  "messenger": "https://m.me/nanabibooshop",
-  "facebook": "https://facebook.com/nanabibooshop",
-  "phone": "",
-  "address": "Hà Nội",
+  "tagline": "",
+  "messenger": "https://www.facebook.com/messages/e2ee/t/7155996887755667",
+  "facebook": "https://www.facebook.com/share/1BcKBJTiLk/",
+  "phone": "0703651690",
+  "address": "Gò Vấp - Hồ Chí Minh",
   "cleaningDays": 1,
   "howTo": [
     "Chọn bộ đồ bạn thích, xem size và ảnh chi tiết.",
     "Xem lịch: ô trống là ngày còn thuê được. Chọn ngày nhận và ngày trả.",
     "Bấm “Chốt thuê”, sao chép đoạn tin nhắn và gửi cho shop qua Messenger."
   ],
-  "policy": "Cọc giữ đồ trước khi nhận. Trả đồ đúng hẹn; trễ tính thêm 1 ngày thuê. Shop tự giặt ủi, bạn không cần giặt."
+  "policy": "•LIST ĐỒ CHO THUÊ VÀ GIÁ THUÊ CẬP NHẬT NGÀY 25/7/2026 , mình đổi giá + đồ cho thuê thôi luật vẫn như cũ ạ , ko collab , ko có cộng tác viên rao cho thuê nha. ( Chưa có time des bảng giá nào rảnh sẽ cập nhật lại , hỏi giá thì ib/cmt nhe)\nLink bài check legit :\nhttps://www.facebook.com/groups/253528268655696/permalink/1355626375112541/?mibextid=Nif5oz https://m.facebook.com/groups/lolita.ulzzang.vintage/permalink/1482673995540223/?mibextid=Nif5oz\n👉-CÁCH CỌC ĐỒ KHI THUÊ:\n💁Tui ở gò vấp p11 \n🌷+Cọc thuê cccd + check ut ( gửi link bài check legit hoặc tin nhắn giao dịch , ut bài check lg còn tin nhắn tùy mức độ thì sẽ có người ko cần cọc gtri hoặc cọc 1 ít) + tiền thuê\n🌷+ ko có cccd/ check lg bắt buộc cọc 70%-150% giá trị đồ(tùy acc)\n🌷+ Cọc slot trước vui lòng cọc tiền thuê 50%-100% ( slot sale cọc full)\n🍀Khách thuê xa vui lòng chịu ship 2 chiều, không kì kèo phí ship và đơn vị vận chuyển , trả đồ theo đúng vận chuyển : vietthel post , giao hàng tiết kiệm , giao hàng nhanh , j&T\n( ko ship hàng lại cho mình qua vietnampost , ninja van, spx ,..nếu mà ship phải hỏi ý kiến mình trước )\n👉*QUY ĐỊNH HOÀN TRẢ & QUY TẮC THUÊ:\n🌷+Khách thuê vui lòng trả ship 2 chiều. \n🌷+Giá thuê là giá cho 3 ngày giữ đồ ( ngày nhận, ngày thuê, ngày trả) \n🌷+Giá thuê chưa gồm phí giặt dưỡng, cái này thu thêm 30-...( tùy mức độ thiệt hại của đồ ) , khách KO TỰ GIẶT ĐỒ\n🌷+Qua ngày thứ 3 ( ngảy trả) vui lòng tự giác gửi mình mvd , đơn hàng được xác nhận đã nhận hàng/đã lấy hàng/đã nhập kho trong cùng ngày, nếu không chi phí phụ thu giữ đồ là 50k/ngày\n🌷+Hủy slot thuê (do vấn đề phát sinh bên bạn) mình sẽ rf 50%  tiền thuê đối với hủy slot trước  trước 2 tuần ngày thuê hoặc hủy xa hơn , hủy sát ngày mình ko hoàn trả nhé ( mình có cho nhượng slot , chuyển qua ngày khác) . NGHĨA LÀ SLOT BTHG BANK FULL TRC 2 TUẦN NGÀY THUÊ \n🌷 mỗi bộ dời dc 1 lần và báo trc 2 tuần ngày thuê\n🌷+Hủy slot thuê (do vấn đề bên mình) mình sẽ rf full tiền thuê đối với test , rf full tiền thuê + make + các chi phí khác đối với fes/shoot sát ngày ( đồ về trễ, đồ có vấn đề ko ship được,.. )  còn bên mình hủy trước 1,5-2 tuần thì sẽ rf full tiền thuê hoặc tìm char khác thế vô cho bạn \n👉- HỎNG ĐỒ ĐỀN THEO MỨC THIỆT HẠI ( với những lỗi nhỏ) còn lớn dẫn đến ko cho thuê được nữa vui lòng rf full tiền đồ + rf full các slot thuê sau nếu có hoặc tìm đồ thay thế cho mình\n🌷-Wig ko đc tự ý cắt tỉa lung tung, điều chỉnh lung tung => Phải báo trước nếu muốn chỉnh sửa \n🌷- Khi trả đồ vui lòng gấp gọn bỏ vào bọc đàng hoàng => Vo tròn đồ vứt đồ vô bọc phạt 100k\n- Để giày vào túi riêng với cost và wig => Để chung phạt 100k - \n🌷-Tránh làm mất túi và bọc lúc mình đã giao đồ cho bạn = Phạt 50k hoặc tìm túi và bọc khác gói đàng \n🌷- MẶC BẢO HỘ ĐẦY ĐỦ , KO DÙNG ĐỒ ĐỂ HAVE SE*/LÀM MẤY TRÒ DẪN TỚI HỆ LỤY ĐỒ KO CHO THUÊ TIẾP ĐƯỢC\n💖- Khi thuê làm ơn giữ gìn đồ của mình cẩn thận ❤ \n👉*STK VÀ CÁCH THỨC LIÊN LẠC:\nMình gửi thông tin chuyển khoản ạ  \n-Techcombank: 19038680078015\nNGUYEN THI QUYNH HUONG\n❌ Lưu ý: nội dung ck : ' tên fb - đồ thuê - ngày thuê(nếu có) ❤️Nhớ cap bill nha, cảm ơn bạn thiệt nhiều."
 };
 
 window.COSTUMES = [
