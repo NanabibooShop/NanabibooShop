@@ -1,6 +1,6 @@
 /* =========================================================
    DỮ LIỆU CỦA SHOP — NanabibooShop
-   Cập nhật bằng admin.html lúc 23:10:21 23/9/2026.
+   Cập nhật bằng admin.html lúc 23:13:57 23/9/2026.
    Cách dễ nhất để sửa: mở admin.html → sửa bằng form → bấm "Lưu".
    ========================================================= */
 
