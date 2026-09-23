@@ -1,6 +1,6 @@
 /* =========================================================
    DỮ LIỆU CỦA SHOP — NanabibooShop
-   Cập nhật bằng admin.html lúc 16:13:00 23/9/2026.
+   Cập nhật bằng admin.html lúc 23:10:21 23/9/2026.
    Cách dễ nhất để sửa: mở admin.html → sửa bằng form → bấm "Lưu".
    ========================================================= */
 
@@ -43,18 +43,9 @@ window.COSTUMES = [
       "https://scontent.fvca3-1.fna.fbcdn.net/v/t39.30808-6/797904881_1413203990760376_5804712680801056586_n.jpg?stp=dst-jpg_tt6&cstp=mx1080x1440&ctp=s1080x1440&_nc_cat=101&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=f727a1&_nc_eui2=AeHQYC2BP-ldjtLF_hh2klNK2VTgst6e0xjZVOCy3p7TGPl9PMboq0QFoSCo4om3XQda4MPtvHrFQs522VyoRUXm&_nc_ohc=IaKxUHOu8yAQ7kNvwHN8uwb&_nc_oc=AdojXh-fiB-zUAFz-cDVEPEnVwV90y7EmAqPSvRGX2jwQNnl0r7scFpSFBRQHfzXUyZGxYrJyGQMaYdYR1ZUDWZU&_nc_zt=23&_nc_ht=scontent.fvca3-1.fna&_nc_gid=PbaGRh1Yn9pF0wV_e_QBjQ&_nc_ss=7b2a8&oh=00_AQJOAFshsmwngMV3ZdI07EOlBmXgFC9MYs7MT1zQ-ReqFA&oe=6AB95C4B",
       "https://scontent.fvca3-1.fna.fbcdn.net/v/t39.30808-6/797904835_1413204014093707_8370754567569510275_n.jpg?stp=dst-jpg_tt6&cstp=mx993x1325&ctp=s993x1325&_nc_cat=100&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=f727a1&_nc_eui2=AeESVgiqz1iMrBfG5CIGgK6RW0z8OUJtO4NbTPw5Qm07g2NbrivBC2OheZxnW-iH8oDA1XqgjOy3-K_pwcNVRHSu&_nc_ohc=-85OO-7AFVYQ7kNvwFWEUeH&_nc_oc=AdpW819NHyWoK58OamUn-sNWtqVP83oRMMaxNbTAtfS5Dg_9rJDq_1ih4D0_lMOjeEwPu0LamotaF5YCJdvu4Ys4&_nc_zt=23&_nc_ht=scontent.fvca3-1.fna&_nc_gid=lwWWnNlwupVtaqLKT5RNkw&_nc_ss=7b2a8&oh=00_AQKTZrWONmRGHvfsZ45cdk_TUstLGMqOz6kqpiN00HLlSQ&oe=6AB94694"
     ],
-    "freeFrom": "2026-10-09",
+    "freeFrom": "2026-09-23",
     "freeTo": "",
-    "booked": [
-      {
-        "from": "2026-09-26",
-        "to": "2026-09-28"
-      },
-      {
-        "from": "2026-10-10",
-        "to": "2026-10-12"
-      }
-    ],
+    "booked": [],
     "hidden": false
   },
   {
@@ -83,12 +74,16 @@ window.COSTUMES = [
       "images/gjo01-2.svg",
       "images/gjo01-3.svg"
     ],
-    "freeFrom": "2026-10-09",
+    "freeFrom": "2026-09-23",
     "freeTo": "",
     "booked": [
       {
-        "from": "2026-09-21",
-        "to": "2026-09-24"
+        "from": "2026-09-23",
+        "to": "2026-09-28"
+      },
+      {
+        "from": "2026-10-20",
+        "to": "2026-10-25"
       }
     ],
     "hidden": false
