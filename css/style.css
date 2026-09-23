@@ -127,6 +127,26 @@ main.wrap { flex: 1; padding-block: 8px 48px; }
   .hero .howto { grid-column: 2; grid-row: 1 / span 2; }
 }
 
+/* Luật thuê (ghim đầu trang) */
+.rules {
+  position: relative; margin-top: 10px; padding: 16px 16px 14px; border-radius: var(--r);
+  background: var(--tag); color: var(--tag-ink);
+  border: 1px solid color-mix(in srgb, var(--tag-ink) 16%, transparent);
+  box-shadow: var(--shadow); display: grid; gap: 10px;
+}
+.rules__head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.rules__pin { width: 22px; height: 22px; color: var(--accent); flex: none; transform: rotate(-12deg); transform-origin: 70% 30%; }
+.rules:hover .rules__pin { animation: swing .9s var(--ease); }
+.rules__head h2 { margin: 0; font: 700 18px/1.2 var(--f-display); }
+.rules__tag { font: 600 11px/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; background: color-mix(in srgb, var(--tag-ink) 10%, transparent); }
+.rules__list { margin: 0; padding: 0; list-style: none; counter-reset: r; display: grid; gap: 6px; }
+.rules__list li { counter-increment: r; display: grid; grid-template-columns: 24px 1fr; gap: 8px; font-size: 14.5px; line-height: 1.5; }
+.rules__list li::before { content: counter(r) "."; font: 700 14px/1.5 var(--f-display); color: var(--accent-2); text-align: right; }
+.rules.is-collapsed .rules__list li:nth-child(n+5) { display: none; }
+.rules__more { justify-self: start; border: 0; background: none; padding: 2px 0; font-weight: 700; font-size: 14px; color: var(--accent-2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 520px) { .rules__tag { margin-left: auto; } }
+@media (min-width: 720px) { .rules__list { display: block; columns: 2; column-gap: 32px; } .rules__list li { break-inside: avoid; margin-bottom: 6px; } }
+
 /* Bộ lọc */
 .filters { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 60px); z-index: 10; margin-top: 22px; padding-block: 10px; background: var(--bg); display: grid; gap: 10px; }
 .search { position: relative; }

@@ -77,7 +77,6 @@
   $("#footer").innerHTML = `
     <b>${esc(SHOP.name || "NanabibooShop")}</b>
     <span>${esc(SHOP.tagline || "")}${SHOP.address ? " · " + esc(SHOP.address) : ""}</span>
-    ${SHOP.policy ? `<span>${esc(SHOP.policy)}</span>` : ""}
     <span>
       ${SHOP.messenger ? `<a href="${esc(SHOP.messenger)}" target="_blank" rel="noopener">Nhắn Messenger</a>` : ""}
       ${SHOP.facebook ? ` · <a href="${esc(SHOP.facebook)}" target="_blank" rel="noopener">Trang Facebook</a>` : ""}
@@ -95,7 +94,18 @@
     const cats = ["Tất cả", ...new Set(ALL.map((c) => c.category).filter(Boolean))];
     const steps = (SHOP.howTo || []).map((s) => `<li>${esc(s)}</li>`).join("");
 
+    const rules = policyLines();
     app.innerHTML = `
+      ${rules.length ? `
+      <section class="rules view-enter ${rules.length > 4 ? "is-collapsed" : ""}" aria-labelledby="rulesH">
+        <div class="rules__head">
+          <svg class="rules__pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3l6 6-3 1-4 4 1 4-2 2-4-4-5 5-1-1 5-5-4-4 2-2 4 1 4-4z" fill="currentColor"/></svg>
+          <h2 id="rulesH">Luật thuê của shop</h2>
+          <span class="rules__tag">Đọc trước khi thuê</span>
+        </div>
+        <ol class="rules__list">${rules.map((r) => `<li>${esc(r)}</li>`).join("")}</ol>
+        ${rules.length > 4 ? `<button class="rules__more" type="button" id="rulesMore">Xem đủ ${rules.length} điều</button>` : ""}
+      </section>` : ""}
       <section class="hero view-enter">
         <h1>Welcome to NanabibooShop <em></em>.</h1>
         ${steps ? `<div class="howto"><p class="howto__title">Cách thuê đồ</p><ol>${steps}</ol></div>` : ""}
@@ -121,6 +131,12 @@
       <section class="grid" id="grid" aria-live="polite"></section>
     `;
 
+    const more = $("#rulesMore");
+    if (more) more.addEventListener("click", () => {
+      const box = more.closest(".rules");
+      const open = box.classList.toggle("is-collapsed");
+      more.textContent = open ? `Xem đủ ${rules.length} điều` : "Thu gọn";
+    });
     $("#q").addEventListener("input", (e) => { home.q = e.target.value; drawGrid(); });
     $("#needDate").addEventListener("click", (e) => { try { e.target.showPicker && e.target.showPicker(); } catch (err) {} });
     $("#needDate").addEventListener("change", (e) => { home.date = e.target.value; syncDateChip(); drawGrid(); });
@@ -132,6 +148,13 @@
       drawGrid();
     }));
     drawGrid();
+  }
+
+  // Luật thuê: mỗi dòng là một điều (nếu chỉ có 1 dòng thì tách theo câu)
+  function policyLines() {
+    let lines = String(SHOP.policy || "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    if (lines.length === 1) lines = lines[0].split(/(?<=[.!?])\s+(?=\S)/).map((s) => s.trim()).filter(Boolean);
+    return lines.map((s) => s.replace(/^[-•*\d.)\s]+/, "").trim()).filter(Boolean);
   }
 
   function syncDateChip() {
