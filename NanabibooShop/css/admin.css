@@ -161,3 +161,14 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 6px; border-
 .hold__act { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 @media (min-width: 720px) { .hold { grid-template-columns: 1fr auto auto; } .hold__act { grid-column: auto; } }
 .mini-cal .h { background: repeating-linear-gradient(45deg, var(--clean-soft) 0 4px, color-mix(in srgb, var(--clean) 30%, var(--surface)) 4px 7px); color: var(--clean); }
+
+/* Bảng giá Fes / Test */
+.price-box { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); }
+.price-box h3 { margin: 0; font: 700 15px/1.2 var(--f-display); }
+.price-box .hint { margin: 0; }
+.price-grid { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.price-grid__h { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.price-grid__lbl { display: grid; line-height: 1.2; padding-right: 4px; }
+.price-grid__lbl small { font-size: 11.5px; color: var(--ink-3); }
+.price-grid input { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); padding: 10px 11px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.price-grid input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
