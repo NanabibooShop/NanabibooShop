@@ -1,12 +1,1 @@
-/* =========================================================
-   KẾT NỐI FIREBASE — dán thông tin project của bạn vào đây
-   (Firebase console → ⚙ Project settings → Your apps → Web app → firebaseConfig)
-
-   Để trống apiKey  → web chạy như cũ bằng file data.js (không có lịch thời gian thực).
-   ========================================================= */
-window.NB_FIREBASE = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: ""
-};
+window.NB_FIREBASE = { apiKey: "AIzaSyAqxzjI-RvRvyroP4AsPDfhp6XMA0IkOqg", authDomain: "nanabibooshop.firebaseapp.com", projectId: "nanabibooshop", storageBucket: "nanabibooshop.firebasestorage.app", messagingSenderId: "98174024180", appId: "1:98174024180:web:a6dbed9dbfca410b1521a1" };
