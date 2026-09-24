@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Quản lý NanabibooShop</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23211A31'/%3E%3Cpath d='M32 18c0-5 7-5 7 0 0 3-7 4-7 8L12 40h40L32 26' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/admin.css?v=3">
+</head>
+<body class="admin">
+  <header class="topbar">
+    <div class="topbar__in">
+      <a class="brand" href="index.html" title="Mở trang khách">
+        <svg class="brand__hanger" viewBox="0 0 48 32" aria-hidden="true"><path d="M24 9c0-4 6-4 6 0 0 3-6 3.5-6 7L4 28h40L24 16" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="brand__name">Quản lý shop</span>
+      </a>
+      <div class="adm-save">
+        <span class="live-badge" id="liveBadge" hidden>● Trực tuyến</span>
+        <button class="btn btn--ghost btn--sm" type="button" id="logoutBtn" hidden>Đăng xuất</button>
+        <span class="dirty" id="dirty" hidden>Chưa lưu</span>
+        <button class="btn btn--primary" type="button" id="saveBtn">Lưu</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Đăng nhập (khi đã kết nối Firebase) -->
+  <section class="login" id="loginBox" hidden>
+    <form class="login__card panel" id="loginForm">
+      <h2>Đăng nhập quản lý</h2>
+      <p class="panel__sub">Dùng email và mật khẩu bạn đã tạo trong Firebase → Authentication.</p>
+      <div class="field"><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="lgPass">Mật khẩu</label><input id="lgPass" type="password" autocomplete="current-password" required></div>
+      <p class="hint hint--warn" id="lgErr"></p>
+      <button class="btn btn--primary btn--block" type="submit" id="lgBtn">Đăng nhập</button>
+      <button class="btn btn--ghost btn--sm" type="button" id="lgReset">Quên mật khẩu</button>
+    </form>
+  </section>
+
+  <main class="wrap adm is-loading" id="adm" data-view="list">
+    <div class="loading" id="admLoading" role="status"><span class="loading__dot"></span>Đang tải…</div>
+
+    <!-- Khách đang giữ chỗ (chỉ khi dùng Firebase) -->
+    <section class="panel holds" id="holdsPanel" hidden>
+      <div class="holds__head">
+        <h2>Khách đang giữ chỗ <span class="holds__n" id="holdsN">0</span></h2>
+        <input id="holdQ" type="search" placeholder="Tìm mã giữ chỗ…" autocomplete="off" aria-label="Tìm mã giữ chỗ">
+      </div>
+      <p class="panel__sub">Khi khách nhắn tin kèm <b>mã giữ chỗ</b> và đã cọc, bấm <b>Xác nhận thuê</b> để khoá lịch. Quá giờ mà không xác nhận, lịch tự mở lại.</p>
+      <div class="holds__list" id="holdsList"></div>
+    </section>
+    <div class="banner" id="draftBanner" hidden>
+      <span id="draftText">Có bản nháp chưa lưu.</span>
+      <span class="banner__act">
+        <button class="btn btn--ghost btn--sm" type="button" id="useDraft">Dùng bản nháp</button>
+        <button class="btn btn--ghost btn--sm" type="button" id="dropDraft">Bỏ</button>
+      </span>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Mục quản lý">
+      <button class="tab" role="tab" id="tabItems" aria-selected="true" type="button">Bộ đồ</button>
+      <button class="tab" role="tab" id="tabShop" aria-selected="false" type="button">Thông tin shop</button>
+    </nav>
+
+    <!-- Danh sách bộ đồ + form sửa -->
+    <section class="adm-items" id="paneItems">
+      <aside class="adm-list">
+        <div class="adm-list__head">
+          <label class="sr-only" for="listQ">Tìm</label>
+          <input id="listQ" type="search" placeholder="Tìm bộ đồ…" autocomplete="off">
+          <button class="btn btn--primary btn--sm" type="button" id="addBtn">+ Thêm đồ</button>
+        </div>
+        <div class="adm-list__body" id="list"></div>
+      </aside>
+
+      <section class="adm-edit" id="editor" aria-live="polite"></section>
+    </section>
+
+    <!-- Thông tin shop -->
+    <section class="panel adm-shop" id="paneShop" hidden>
+      <h2>Thông tin shop</h2>
+      <div class="fields2">
+        <div class="field"><label for="sName">Tên shop</label><input id="sName" data-shop="name"></div>
+        <div class="field"><label for="sAddr">Khu vực / địa chỉ</label><input id="sAddr" data-shop="address"></div>
+      </div>
+      <div class="field"><label for="sTag">Câu giới thiệu ngắn</label><input id="sTag" data-shop="tagline"></div>
+      <div class="field"><label for="sMsg">Link Messenger (khách gửi tin chốt thuê vào đây)</label><input id="sMsg" data-shop="messenger" placeholder="https://m.me/ten-trang-cua-ban"></div>
+      <p class="hint">Mở trang Facebook của shop → phần tên người dùng (username). Link Messenger là <b>https://m.me/</b> + username đó.</p>
+      <div class="fields2">
+        <div class="field"><label for="sFb">Link trang Facebook</label><input id="sFb" data-shop="facebook"></div>
+        <div class="field"><label for="sPhone">Số điện thoại (để trống nếu không muốn hiện)</label><input id="sPhone" data-shop="phone"></div>
+      </div>
+      <div class="field"><label for="sHold">Thời gian giữ chỗ khi khách bấm "Chốt thuê" (phút)</label><input id="sHold" data-shop="holdMinutes" type="number" min="5" max="170" inputmode="numeric" placeholder="30"></div>
+      <p class="hint">Chỉ có tác dụng khi đã kết nối Firebase. Trong thời gian này, khách khác không chọn được các ngày đó.</p>
+      <div class="field"><label for="sClean">Số ngày giặt ủi sau mỗi lượt thuê (ghi chú)</label><input id="sClean" data-shop="cleaningDays" type="number" min="0" max="7" inputmode="numeric"></div>
+      <p class="hint">Chỉ dùng để tô màu vàng trên lịch nhỏ trong admin, giúp bạn nhớ ngày giặt ủi. Không ảnh hưởng tới lịch khách chọn.</p>
+      <div class="field"><label for="sHow">Hướng dẫn cách thuê (mỗi dòng là một bước)</label><textarea id="sHow" data-shop="howTo" rows="4"></textarea></div>
+      <div class="save-opt">
+        <h3>Bản sao lưu data.js</h3>
+        <p>Khi Firebase gặp sự cố hoặc hết lượt miễn phí trong ngày, web tự dùng file <code>data.js</code>. Thỉnh thoảng (VD mỗi tuần) tải bản mới, chép đè vào thư mục shop rồi upload lên GitHub.</p>
+        <button class="btn btn--ghost btn--sm" type="button" id="backupBtn">Tải data.js</button>
+      </div>
+      <div class="field"><label for="sPolicy">Luật thuê của shop — ghim ở đầu trang chủ (mỗi dòng là một điều)</label><textarea id="sPolicy" data-shop="policy" rows="12" placeholder="# Cách cọc đồ&#10;Cọc giữ đồ trước khi nhận.&#10;# Quy định trả đồ&#10;Trả đồ đúng hẹn; trễ tính thêm 1 ngày thuê.&#10;…"></textarea></div>
+      <p class="hint">Mỗi dòng là một điều. Dòng tiêu đề nhóm: bắt đầu bằng <b>#</b> hoặc <b>👉</b>, hoặc viết HOA và kết thúc bằng dấu <b>:</b> (VD “👉 CÁCH CỌC ĐỒ KHI THUÊ:”). Trang chủ chỉ hiện khung tóm tắt, khách bấm vào để đọc đầy đủ theo từng nhóm. Số tài khoản (dãy từ 8 số trở lên) sẽ có nút “Sao chép STK”.</p>
+    </section>
+  </main>
+
+  <!-- Hộp lưu -->
+  <dialog class="sheet" id="saveSheet" aria-labelledby="saveTitle">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <div class="sheet__head">
+      <h2 id="saveTitle">Lưu thay đổi</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Đóng"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div id="saveBody"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="data.js"></script>
+  <script src="js/common.js?v=3"></script>
+  <script src="js/firebase-config.js?v=3"></script>
+  <script src="js/admin.js?v=3"></script>
+  <script type="module" src="js/db.js?v=3"></script>
+</body>
+</html>

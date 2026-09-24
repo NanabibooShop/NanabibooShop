@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Luật bảo vệ dữ liệu NanabibooShop
+// ⚠ Đổi "EMAIL_ADMIN@gmail.com" thành email bạn dùng để đăng nhập trang quản lý.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in ["EMAIL_ADMIN@gmail.com"];
+    }
+
+    // Một lượt giữ chỗ hợp lệ: tối đa 3 tiếng
+    function validHold(h) {
+      return h is map
+        && h.keys().hasOnly(["costumeId", "from", "to", "exp"])
+        && h.costumeId is string && h.from is string && h.to is string
+        && h.from.size() == 10 && h.to.size() == 10
+        && h.exp is timestamp
+        && h.exp > request.time
+        && h.exp < request.time + duration.value(3, "h");
+    }
+
+    // Khách chỉ được THÊM đúng 1 lượt giữ chỗ mới, không sửa / xoá gì khác
+    function isNewHold() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let code = after.lastHold;
+      let d = after.holds.diff(before.holds);
+      return after.diff(before).affectedKeys().hasOnly(["holds", "lastHold"])
+        && code is string && code.size() >= 4 && code.size() <= 12
+        && d.addedKeys() == [code].toSet()
+        && d.changedKeys().size() == 0
+        && d.removedKeys().size() == 0
+        && validHold(after.holds[code]);
+    }
+
+    // public/state: thông tin shop + bộ đồ + giữ chỗ. Ai cũng xem được.
+    match /public/{docId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (docId == "state" && isNewHold());
+    }
+  }
+}
