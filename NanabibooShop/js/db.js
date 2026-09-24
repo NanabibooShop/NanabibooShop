@@ -52,7 +52,8 @@ async function start() {
   };
   const clean = (c) => ({
     id: c.id, name: c.name || "", series: c.series || "", category: c.category || "", size: c.size || "", fit: c.fit || "",
-    price: Number(c.price) || 0, deposit: Number(c.deposit) || 0, includes: c.includes || [], description: c.description || "",
+    priceFes: Number(c.priceFes) || 0, depositFes: Number(c.depositFes) || 0,
+    priceTest: Number(c.priceTest) || 0, depositTest: Number(c.depositTest) || 0, priceNote: c.priceNote || "", includes: c.includes || [], description: c.description || "",
     images: c.images || [], freeFrom: c.freeFrom || "", freeTo: c.freeTo || "",
     booked: (c.booked || []).filter((b) => b.from).map((b) => (b.note ? { from: b.from, to: b.to || b.from, note: b.note } : { from: b.from, to: b.to || b.from }))
       .sort((x, y) => x.from.localeCompare(y.from)),

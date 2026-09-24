@@ -4,7 +4,7 @@
   let ALL = [];
   const MYHOLD_KEY = "nb-myholds";
   const $ = (s, el = document) => el.querySelector(s);
-  const { media, isImage, thumbHtml, esc, fmt, fmtFull, weekday, money, moneyShort, parse, iso, addDays, today, diffDays } = window.NB;
+  const { media, isImage, thumbHtml, esc, fmt, fmtFull, weekday, money, moneyShort, plans, priceLabel, parse, iso, addDays, today, diffDays } = window.NB;
 
   const app = $("#app");
   const PLACEHOLDER = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100"><rect width="80" height="100" fill="#DDD6EA"/><path d="M40 34c0-5 7-5 7 0 0 3-7 4-7 8L20 56h40L40 42" fill="none" stroke="#8C849D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>');
@@ -283,7 +283,7 @@
           <div class="card__foot">
             <span class="status status--${s.cls}">${esc(s.label)}</span>
             <span class="card__meta">${esc(s.note)}</span>
-            <span class="pricetag">${moneyShort(c.price)}<small>/ngày</small></span>
+            <span class="prices">${plans(c).map((p) => `<span class="pricetag pricetag--${p.key}"><small>${p.label}</small>${priceLabel(p.price, true)}</span>`).join("")}</span>
           </div>
         </div>
       </a>`).join("");
@@ -318,10 +318,11 @@
     const win = window.NB.freeWindow(c);
     const av0 = window.NB.availability(c);
     const m0 = av0.state === "free" ? t0 : av0.from || (win ? win.start : t0);
-    cur = { c, win, month: new Date(m0.getFullYear(), m0.getMonth(), 1), start: null, end: null, picking: false };
+    const pl = plans(c);
+    cur = { c, pl, plan: null, win, month: new Date(m0.getFullYear(), m0.getMonth(), 1), start: null, end: null, picking: false };
     // Khách đang giữ chỗ bộ này → chọn sẵn đúng khoảng đã giữ
     const mh = findMyHold(c.id);
-    if (mh) { cur.start = parse(mh.from); cur.end = parse(mh.to); cur.picking = false; cur.month = new Date(cur.start.getFullYear(), cur.start.getMonth(), 1); }
+    if (mh) { cur.start = parse(mh.from); cur.end = parse(mh.to); cur.picking = false; cur.plan = mh.plan || null; cur.month = new Date(cur.start.getFullYear(), cur.start.getMonth(), 1); }
     // Nếu khách đã chọn "cần đồ ngày" ở trang chủ và ngày đó trống, chọn sẵn
     else if (home.date) {
       const d = parse(home.date);
@@ -364,8 +365,9 @@
               <span class="eyebrow">${esc(c.series)}</span>
               <h1>${esc(c.name)}</h1>
               <span class="d-code">MÃ ${esc(c.id)} · ${esc(c.category || "")}</span>
-              <div class="d-price"><span class="pricetag">${moneyShort(c.price)}<small>/ngày</small></span></div>
-              <span class="d-deposit">Cọc: <b>${money(c.deposit)}</b></span>
+              <div class="d-plans">${pl.map((p) => `
+                <div class="d-plan"><span class="pricetag pricetag--${p.key}"><small>${p.label}</small>${priceLabel(p.price, true)}</span><span class="d-deposit">Cọc <b>${priceLabel(p.deposit, true)}</b></span></div>`).join("")}
+              </div>
               <span class="size" style="align-self:flex-start">Size ${esc(c.size || "—")}</span>
             </div>
           </div>
@@ -381,7 +383,7 @@
               <div><dt>Size</dt><dd>${esc(c.size || "—")}${c.fit ? " · " + esc(c.fit) : ""}</dd></div>
               <div><dt>Gồm có</dt><dd><div class="includes">${(c.includes || []).map((x) => `<span>${esc(x)}</span>`).join("") || "—"}</div></dd></div>
               ${c.description ? `<div><dt>Ghi chú</dt><dd>${esc(c.description)}</dd></div>` : ""}
-              <div><dt>Giá thuê</dt><dd>${money(c.price)} / ngày · cọc ${money(c.deposit)}</dd></div>
+              <div><dt>Giá thuê</dt><dd><div class="price-rows">${pl.map((p) => `<span><b>${p.label}</b> <small>(${esc(p.desc.toLowerCase())})</small>: ${priceLabel(p.price)} · cọc ${priceLabel(p.deposit)}</span>`).join("")}</div>${c.priceNote ? `<p class="price-note">${esc(c.priceNote)}</p>` : ""}</dd></div>
             </dl>
           </section>
 
@@ -400,6 +402,17 @@
             <p class="panel__sub">${win
               ? `Ô xanh là ngày còn trống, ô gạch là đã có người thuê hoặc đang có khách giữ chỗ. Chạm ngày <b>nhận đồ</b>, rồi chạm ngày <b>trả đồ</b>.${isLive() ? ` Lịch cập nhật trực tiếp.` : ""}`
               : `Bộ này chưa có lịch trống. Nhắn shop qua Messenger để hỏi lịch nhé.`}</p>
+            ${win ? `
+            <div class="plan-pick" id="planPick">
+              <span class="plan-pick__lbl">Bạn thuê để làm gì?</span>
+              <div class="plan-pick__opts" role="radiogroup" aria-label="Mục đích thuê">
+                ${pl.map((p) => `<button type="button" class="plan-opt" role="radio" aria-checked="false" data-plan="${p.key}">
+                  <span class="plan-opt__top"><b>${p.label}</b><span class="plan-opt__price">${priceLabel(p.price)}</span></span>
+                  <small>${esc(p.desc)}</small>
+                  <small>Cọc ${priceLabel(p.deposit)}</small>
+                </button>`).join("")}
+              </div>
+            </div>` : ""}
             <div class="cal" id="cal"></div>
             <div class="legend">
               <span><i class="lg-free"></i>Còn trống</span>
@@ -434,9 +447,12 @@
     app.querySelectorAll("[data-jump]").forEach((b) => b.addEventListener("click", () => {
       const t = document.getElementById(b.dataset.jump); t && t.scrollIntoView({ behavior: "smooth", block: "center" });
     }));
+    app.querySelectorAll("[data-plan]").forEach((b) => b.addEventListener("click", () => { cur.plan = b.dataset.plan; drawPlan(); drawPick(); }));
+    drawPlan();
     $("#bookBtn").addEventListener("click", openBooking);
     $("#dockBtn").addEventListener("click", () => {
-      if (!cur.start) {
+      if (cur.win && !cur.plan) askPlan();
+      else if (!cur.start) {
         $("#bookPanel").scrollIntoView({ behavior: "smooth", block: "start" });
         toast(cur.win ? "Chọn ngày nhận đồ trên lịch nhé" : "Bộ này chưa có lịch trống — nhắn shop để hỏi nhé");
       } else openBooking();
@@ -501,6 +517,19 @@
     drawPick();
   }
 
+  function drawPlan() {
+    document.querySelectorAll("[data-plan]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.plan === cur.plan)));
+    const box = $("#planPick"); box && box.classList.toggle("is-done", !!cur.plan);
+  }
+  function askPlan() {
+    const box = $("#planPick");
+    if (!box) return;
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    box.classList.remove("is-nudge"); void box.offsetWidth; box.classList.add("is-nudge");
+    toast("Chọn mục đích thuê: Fes hoặc Test nhé");
+  }
+  const planOf = () => (cur.plan ? cur.pl.find((p) => p.key === cur.plan) : null);
+
   function drawPick() {
     const { c, start, end, picking } = cur;
     $("#pbStart").classList.toggle("is-active", !start);
@@ -513,25 +542,33 @@
       hint.textContent = cur.win ? "Chưa chọn ngày. Chỉ chọn được các ô màu xanh." : "Hiện chưa đặt được bộ này.";
       sum.hidden = true;
       $("#bookBtn").disabled = true;
-      $("#dockTxt").innerHTML = `<b>${moneyShort(c.price)}/ngày</b>${cur.win ? "Chọn ngày để chốt thuê" : "Chưa có lịch trống"}`;
+      const p0 = planOf();
+      $("#dockTxt").innerHTML = `<b>${p0 ? p0.label + " · " + priceLabel(p0.price, true) : cur.pl.map((p) => p.label + " " + priceLabel(p.price, true)).join(" · ")}</b>${!cur.win ? "Chưa có lịch trống" : p0 ? "Chọn ngày để chốt thuê" : "Chọn Fes/Test và ngày thuê"}`;
       return;
     }
     const n = diffDays(start, end) + 1;
-    const total = n * (Number(c.price) || 0);
+    const p = planOf();
     const mh = findMyHold(c.id, iso(start), iso(end));
     hint.textContent = mh ? `Bạn đang giữ chỗ các ngày này đến ${hhmm(mh.expiresAt)} (mã ${mh.code}). Bấm "Chốt thuê" để mở lại tin nhắn.`
       : picking ? (n === 1 ? "Thuê 1 ngày. Muốn thuê thêm thì chạm vào ngày trả đồ." : "Có thể chạm ngày khác để đổi ngày trả.") : "Chạm vào lịch để chọn lại từ đầu.";
+    if (!p && !mh) hint.textContent = "Chọn mục đích thuê (Fes hoặc Test) ở phía trên lịch để xem giá.";
     sum.hidden = false;
-    sum.innerHTML = `
-      <div><span>${money(c.price)} × ${n} ngày</span><b>${money(total)}</b></div>
-      <div><span>Tiền cọc (hoàn lại khi trả đồ)</span><b>${money(c.deposit)}</b></div>
-      <div class="total"><span>Tạm tính tiền thuê</span><b>${money(total)}</b></div>`;
+    sum.innerHTML = p ? `
+      <div><span>Mục đích</span><b>${p.label} · ${esc(p.desc)}</b></div>
+      <div><span>Thời gian</span><b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày</b></div>
+      <div><span>Tiền cọc (hoàn lại khi trả đồ)</span><b>${priceLabel(p.deposit)}</b></div>
+      <div class="total"><span>Giá thuê ${p.label}</span><b>${priceLabel(p.price)}</b></div>
+      ${c.priceNote ? `<p class="price-note">${esc(c.priceNote)}</p>` : ""}`
+      : `<div><span>Thời gian</span><b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày</b></div>
+      <div class="total"><span>Giá thuê</span><b>Chọn Fes / Test</b></div>`;
     $("#bookBtn").disabled = false;
-    $("#dockTxt").innerHTML = `<b>${money(total)}</b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày`;
+    $("#dockTxt").innerHTML = p ? `<b>${p.label} · ${priceLabel(p.price)}</b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày`
+      : `<b>Chọn Fes hoặc Test</b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày`;
   }
 
   function buildMessage(hold) {
     const { c, start, end } = cur;
+    const p = planOf();
     const n = diffDays(start, end) + 1;
     const name = $("#fName").value.trim();
     const phone = $("#fPhone").value.trim();
@@ -543,7 +580,8 @@
       `• Nhận đồ: ${weekday(start)}, ${fmtFull(start)}`,
       `• Trả đồ: ${weekday(end)}, ${fmtFull(end)}`,
       `• Số ngày: ${n} ngày`,
-      `• Tạm tính: ${money(n * (Number(c.price) || 0))} (cọc ${money(c.deposit)})`
+      `• Mục đích: ${p.label} (${p.desc.toLowerCase()})`,
+      `• Giá thuê: ${p.price > 0 ? money(p.price) : "nhờ shop báo giá"} · Cọc: ${p.deposit > 0 ? money(p.deposit) : "nhờ shop báo"}`
     ];
     if (hold) lines.push(`• Mã giữ chỗ: ${hold.code} (giữ đến ${hhmm(hold.expiresAt)})`);
     if (name) lines.push(`• Tên: ${name}`);
@@ -582,6 +620,7 @@
 
   async function openBooking() {
     if (!cur || !cur.start) return;
+    if (!planOf()) { askPlan(); return; }
     const c = cur.c, from = iso(cur.start), to = iso(cur.end);
     let hold = null;
     if (isLive()) {
@@ -592,7 +631,7 @@
         try {
           const minutes = Number(SHOP.holdMinutes) || 30;
           const r = await window.NBData.api.createHold(c.id, from, to, minutes);
-          hold = { code: r.code, expiresAt: r.expiresAt, costumeId: c.id, from, to };
+          hold = { code: r.code, expiresAt: r.expiresAt, costumeId: c.id, from, to, plan: cur.plan };
           saveMyHold(hold);
           pendingHold = null;
           applyData(window.NBData);

@@ -27,6 +27,22 @@
     return n >= 1000 && n % 1000 === 0 ? (n / 1000).toLocaleString("vi-VN") + "K" : money(n);
   }
 
+  /* ---------- 2 bảng giá: Fes (đi sự kiện) & Test (thử tại nhà) ----------
+     Giá là giá cả lượt thuê theo bảng giá của shop (không nhân số ngày).
+     Giá = 0 → hiện "Liên hệ". Dữ liệu cũ (price/deposit) được hiểu là giá Fes. */
+  const PLANS = [
+    { key: "fes", label: "Fes", desc: "Đi sự kiện, lễ hội" },
+    { key: "test", label: "Test", desc: "Thử tại nhà, không mang ra ngoài" }
+  ];
+  function plans(c) {
+    const pick = (a, b) => Number(a != null && a !== "" ? a : b) || 0;
+    return [
+      Object.assign({}, PLANS[0], { price: pick(c.priceFes, c.price), deposit: pick(c.depositFes, c.deposit) }),
+      Object.assign({}, PLANS[1], { price: pick(c.priceTest, 0), deposit: pick(c.depositTest, 0) })
+    ];
+  }
+  function priceLabel(n, short) { return Number(n) > 0 ? (short ? moneyShort(n) : money(n)) : "Liên hệ"; }
+
   /* ---------- Lịch thuê ----------
      - "freeFrom" / "freeTo": khoảng shop nhận đặt (freeTo để trống = không giới hạn).
      - "booked": các lượt đã có khách thuê [{from, to, note}] → khoá, khách khác không chọn trùng được.
@@ -174,7 +190,7 @@
     return `<img src="${esc(url || opt.fallback || "")}" alt="${esc(alt)}"${lazy} decoding="async"${fallback}>`;
   }
 
-  window.NB = { media, isImage, thumbHtml, parse, iso, addDays, today, diffDays, fmt, fmtFull, weekday, money, moneyShort, dayState, availability, checkRange, freeWindow, bookingOn, holdOn, cleaningOn, vnToIso, isoToVn, esc };
+  window.NB = { media, isImage, thumbHtml, parse, iso, addDays, today, diffDays, fmt, fmtFull, weekday, money, moneyShort, plans, priceLabel, dayState, availability, checkRange, freeWindow, bookingOn, holdOn, cleaningOn, vnToIso, isoToVn, esc };
 
   /* ---------- Kho dữ liệu dùng chung ----------
      Mặc định lấy từ data.js. Nếu đã kết nối Firebase (js/db.js) thì dữ liệu được thay bằng bản trên mạng

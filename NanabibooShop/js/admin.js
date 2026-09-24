@@ -57,7 +57,7 @@
     $("#draftBanner").hidden = false;
     $("#useDraft").onclick = () => {
       const orig = new Set(items.map((c) => c._origId).filter(Boolean));
-      shop = d.shop; items = d.costumes.map((c) => Object.assign(c, { _origId: orig.has(c.id) ? c.id : null }));
+      shop = d.shop; items = d.costumes.map((c) => Object.assign(migratePrice(c), { _origId: orig.has(c.id) ? c.id : null }));
       orig.forEach((id) => { if (!items.some((c) => c.id === id)) deletedIds.add(id); });
       sel = items.length ? 0 : -1;
       $("#draftBanner").hidden = true; dirty = true; $("#dirty").hidden = false;
@@ -122,10 +122,25 @@
     return id;
   }
   $("#addBtn").onclick = () => {
-    items.unshift({ id: newId(), name: "", series: "", category: "Anime", size: "M", fit: "", price: 150000, deposit: 300000, includes: [], description: "", images: [], freeFrom: iso(today()), freeTo: "", booked: [], hidden: false });
+    items.unshift({ id: newId(), name: "", series: "", category: "Anime", size: "M", fit: "", priceFes: 0, depositFes: 0, priceTest: 0, depositTest: 0, priceNote: "", includes: [], description: "", images: [], freeFrom: iso(today()), freeTo: "", booked: [], hidden: false });
     sel = 0; adm.dataset.view = "edit"; markDirty(); renderList(); renderEditor();
     setTimeout(() => $("#eName") && $("#eName").focus(), 50);
   };
+
+  /* ---------- Bảng giá Fes / Test ---------- */
+  // Dữ liệu cũ chỉ có price/deposit → chuyển thành giá Fes
+  function migratePrice(c) {
+    if (c.priceFes == null) c.priceFes = Number(c.price) || 0;
+    if (c.depositFes == null) c.depositFes = Number(c.deposit) || 0;
+    if (c.priceTest == null) c.priceTest = 0;
+    if (c.depositTest == null) c.depositTest = 0;
+    if (c.priceNote == null) c.priceNote = "";
+    delete c.price; delete c.deposit;
+    return c;
+  }
+  function priceHint(c) {
+    return window.NB.plans(c).map((p) => `${p.label}: ${window.NB.priceLabel(p.price)} (cọc ${window.NB.priceLabel(p.deposit)})`).join(" · ");
+  }
 
   /* ---------- Form sửa ---------- */
   const TEXT_FIELDS = [
@@ -158,10 +173,22 @@
           <div class="field"><label for="eCat">Loại</label><input id="eCat" data-k="category" list="catList" value="${esc(c.category)}"><datalist id="catList">${cats.map((x) => `<option value="${esc(x)}">`).join("")}</datalist></div>
           <div class="field"><label for="eSize">Size</label><input id="eSize" data-k="size" value="${esc(c.size)}" placeholder="S / M / L"></div>
           <div class="field"><label for="eFit">Vừa với</label><input id="eFit" data-k="fit" value="${esc(c.fit)}" placeholder="Cao 150–162cm"></div>
-          <div class="field"><label for="ePrice">Giá thuê / ngày (đ)</label><input id="ePrice" data-k="price" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.price)}"></div>
-          <div class="field"><label for="eDep">Tiền cọc (đ)</label><input id="eDep" data-k="deposit" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.deposit)}"></div>
         </div>
-        <p class="hint" id="priceHint">${money(c.price)}/ngày · cọc ${money(c.deposit)}</p>
+        <div class="price-box">
+          <h3>Bảng giá thuê</h3>
+          <p class="hint">Giá cả lượt thuê theo bảng giá của shop (không nhân số ngày). Để 0 → khách thấy "Liên hệ".</p>
+          <div class="price-grid">
+            <span class="price-grid__h"></span><span class="price-grid__h">Giá thuê (đ)</span><span class="price-grid__h">Tiền cọc (đ)</span>
+            <span class="price-grid__lbl"><b>Fes</b><small>Đi sự kiện</small></span>
+            <input id="ePriceFes" aria-label="Giá thuê Fes" data-k="priceFes" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.priceFes)}">
+            <input id="eDepFes" aria-label="Tiền cọc Fes" data-k="depositFes" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.depositFes)}">
+            <span class="price-grid__lbl"><b>Test</b><small>Thử tại nhà</small></span>
+            <input id="ePriceTest" aria-label="Giá thuê Test" data-k="priceTest" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.priceTest)}">
+            <input id="eDepTest" aria-label="Tiền cọc Test" data-k="depositTest" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.depositTest)}">
+          </div>
+          <p class="hint" id="priceHint">${priceHint(c)}</p>
+          <div class="field"><label for="ePriceNote">Ghi chú giá (không bắt buộc)</label><input id="ePriceNote" data-k="priceNote" value="${esc(c.priceNote)}" placeholder="VD: Giá cho 1 lượt 2 ngày, thêm ngày +50K"></div>
+        </div>
         <div class="field"><label for="eInc">Bộ đồ gồm có (mỗi dòng một món)</label><textarea id="eInc" data-k="includes" data-lines rows="4">${esc((c.includes || []).join("\n"))}</textarea></div>
         <div class="field"><label for="eDesc">Mô tả / ghi chú</label><textarea id="eDesc" data-k="description" rows="3">${esc(c.description)}</textarea></div>
         <label class="check"><input type="checkbox" id="eHidden" ${c.hidden ? "checked" : ""}> Ẩn bộ đồ này khỏi trang khách (tạm ngưng cho thuê)</label>
@@ -231,7 +258,7 @@
       else if (k === "id") c[k] = el.value.trim().toUpperCase().replace(/\s+/g, "");
       else c[k] = el.value;
       if (k === "name") $("#edTitle").textContent = c.name || "Bộ đồ mới";
-      if (k === "price" || k === "deposit") $("#priceHint").textContent = `${money(c.price)}/ngày · cọc ${money(c.deposit)}`;
+      if (/^(price|deposit)(Fes|Test)$/.test(k)) $("#priceHint").textContent = priceHint(c);
       if (k === "id") validateId(c);
       markDirty(); renderList();
     }));
@@ -547,7 +574,8 @@
   function buildDataJs() {
     const cleanItems = items.map((c) => ({
       id: c.id, name: c.name, series: c.series || "", category: c.category || "", size: c.size || "", fit: c.fit || "",
-      price: Number(c.price) || 0, deposit: Number(c.deposit) || 0,
+      priceFes: Number(c.priceFes) || 0, depositFes: Number(c.depositFes) || 0,
+      priceTest: Number(c.priceTest) || 0, depositTest: Number(c.depositTest) || 0, priceNote: c.priceNote || "",
       includes: c.includes || [], description: c.description || "", images: c.images || [],
       freeFrom: c.freeFrom || "", freeTo: c.freeTo || "",
       booked: (c.booked || []).filter((b) => b.from).map((b) => (b.note ? { from: b.from, to: b.to || b.from, note: b.note } : { from: b.from, to: b.to || b.from })).sort((x, y) => x.from.localeCompare(y.from)),
@@ -750,7 +778,7 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
   function init(shopData, costumesData, opts) {
     shop = clone(shopData || {});
     items = clone(costumesData || []).map((c) => Object.assign(c, { _origId: opts && opts.fromDb ? c.id : null }));
-    items.forEach((c) => { delete c.order; });
+    items.forEach((c) => { delete c.order; migratePrice(c); });
     sel = items.length ? 0 : -1;
     ORIGINAL = snapshot();
     adm.classList.remove("is-loading");
