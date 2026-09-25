@@ -459,7 +459,8 @@
 
   /* ---------- Link đánh giá cho từng lượt thuê ---------- */
   const inviteFor = (c, b) => invites.find((v) => v.costumeId === c.id && v.from === b.from && (v.to || v.from) === (b.to || b.from));
-  const linkOf = (code) => location.origin + location.pathname.replace(/admin\.html$/, "") + "#/danh-gia/" + code;
+  // Link trang khách (web có thể mở admin dạng /admin hoặc /admin.html → luôn lấy thư mục gốc của web)
+  const linkOf = (code) => new URL("./", location.href).href + "#/danh-gia/" + code;
   function reviewCell(c, b, i) {
     const v = inviteFor(c, b);
     const r = v && reviews.find((x) => x.code === v.code);
