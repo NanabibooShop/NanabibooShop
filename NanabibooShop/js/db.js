@@ -2,8 +2,11 @@
    Kết nối Firebase (Firestore) — lịch thời gian thực + giữ chỗ tạm
 
    Toàn bộ dữ liệu công khai nằm trong MỘT bản ghi: public/state
-     { shop: {...}, costumes: [...], holds: { MÃ: {costumeId, from, to, exp} }, lastHold, updatedAt }
+     { shop: {...}, costumes: [...], holds: { MÃ: {costumeId, from, to, exp, plan} }, lastHold, updatedAt }
    → mỗi lượt khách chỉ tốn ~1 lượt đọc (gói miễn phí: 50.000 lượt đọc/ngày).
+
+   Đánh giá: public/reviews { items: { MÃ_LINK: {costumeId, stars, text, name, plan, from, at, hidden?} }, last }
+   Link đánh giá (chỉ shop tạo, mỗi link dùng 1 lần): invites/MÃ_LINK { costumeId, from, to, plan, used, createdAt }
    ========================================================= */
 const cfg = window.NB_FIREBASE || {};
 const Data = window.NBData;
@@ -39,33 +42,46 @@ async function start() {
     if (cfg.emulator) authM.connectAuthEmulator(auth, `http://${cfg.emulator.host}:${cfg.emulator.authPort || 9099}`, { disableWarnings: true });
   }
 
-  const { doc, onSnapshot, getDoc, runTransaction, Timestamp, serverTimestamp, deleteField } = F;
+  const { doc, collection, onSnapshot, getDoc, getDocs, setDoc, updateDoc, runTransaction, Timestamp, serverTimestamp, deleteField } = F;
   const STATE = doc(db, "public", "state");
+  const REVIEWS = doc(db, "public", "reviews");
+  const inviteRef = (code) => doc(db, "invites", code);
+  const PLAN_OK = (p) => (p === "fes" || p === "test" ? p : "");
+  const randCode = (n) => { let c = ""; for (let i = 0; i < n; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; return c; };
+  const toMs = (t) => (t && t.toMillis ? t.toMillis() : 0);
+  const reviewList = (map) => Object.entries(map || {}).map(([code, r]) => ({
+    code, costumeId: r.costumeId, stars: Number(r.stars) || 0, text: r.text || "", name: r.name || "",
+    plan: r.plan || "", from: r.from || "", at: toMs(r.at), hidden: !!r.hidden
+  })).sort((a, b) => b.at - a.at);
   const now = () => Date.now();
   const holdList = (map) => Object.entries(map || {}).map(([code, h]) => ({
-    code, costumeId: h.costumeId, from: h.from, to: h.to, expiresAt: h.exp && h.exp.toMillis ? h.exp.toMillis() : 0
+    code, costumeId: h.costumeId, from: h.from, to: h.to, plan: h.plan || "", expiresAt: h.exp && h.exp.toMillis ? h.exp.toMillis() : 0
   }));
   const activeMap = (map) => {
     const out = {};
     Object.entries(map || {}).forEach(([k, h]) => { if (h.exp && h.exp.toMillis() > now()) out[k] = h; });
     return out;
   };
+  const bookedClean = (b) => {
+    const o = { from: b.from, to: b.to || b.from };
+    if (b.note) o.note = b.note;
+    if (PLAN_OK(b.plan)) o.plan = b.plan;
+    return o;
+  };
   const clean = (c) => ({
     id: c.id, name: c.name || "", series: c.series || "", category: c.category || "", size: c.size || "", fit: c.fit || "",
     priceFes: Number(c.priceFes) || 0, depositFes: Number(c.depositFes) || 0,
     priceTest: Number(c.priceTest) || 0, depositTest: Number(c.depositTest) || 0, priceNote: c.priceNote || "", includes: c.includes || [], description: c.description || "",
     images: c.images || [], freeFrom: c.freeFrom || "", freeTo: c.freeTo || "",
-    booked: (c.booked || []).filter((b) => b.from).map((b) => (b.note ? { from: b.from, to: b.to || b.from, note: b.note } : { from: b.from, to: b.to || b.from }))
-      .sort((x, y) => x.from.localeCompare(y.from)),
+    booked: (c.booked || []).filter((b) => b.from).map(bookedClean).sort((x, y) => x.from.localeCompare(y.from)),
     hidden: !!c.hidden
   });
 
   /* ---------- API dùng chung ---------- */
   const api = {
     // Khách bấm "Chốt thuê": giữ chỗ tạm `minutes` phút. Trả về { code, expiresAt }
-    async createHold(costumeId, from, to, minutes) {
-      let code = "";
-      for (let i = 0; i < 6; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+    async createHold(costumeId, from, to, minutes, plan) {
+      const code = randCode(6);
       const exp = Timestamp.fromMillis(now() + Math.min(Math.max(minutes || 30, 5), 170) * 60000);
       await runTransaction(db, async (tx) => {
         const s = await tx.get(STATE);
@@ -76,9 +92,49 @@ async function start() {
         const holds = holdList(st.holds).filter((h) => h.costumeId === costumeId && h.expiresAt > now());
         const err = window.NB.checkRange(Object.assign({}, c, { _holds: holds }), window.NB.parse(from), window.NB.parse(to));
         if (err) throw new Error(err);
-        tx.update(STATE, { ["holds." + code]: { costumeId, from, to, exp }, lastHold: code });
+        const h = { costumeId, from, to, exp };
+        if (PLAN_OK(plan)) h.plan = plan;
+        tx.update(STATE, { ["holds." + code]: h, lastHold: code });
       });
       return { code, expiresAt: exp.toMillis() };
+    },
+
+    /* ---------- Đánh giá ---------- */
+    // Tất cả đánh giá (1 lượt đọc, lưu tạm 10 phút trong phiên để tiết kiệm)
+    async loadReviews(force) {
+      const KEY = "nb-reviews-cache";
+      if (!force) {
+        try {
+          const c = JSON.parse(sessionStorage.getItem(KEY) || "null");
+          if (c && Date.now() - c.t < 600000) return c.list;
+        } catch (e) {}
+      }
+      const s = await getDoc(REVIEWS);
+      const list = s.exists() ? reviewList(s.data().items) : [];
+      try { sessionStorage.setItem(KEY, JSON.stringify({ t: Date.now(), list })); } catch (e) {}
+      return list;
+    },
+    // Thông tin 1 link đánh giá (null nếu link sai)
+    async getInvite(code) {
+      const s = await getDoc(inviteRef(code));
+      return s.exists() ? Object.assign({ code }, s.data()) : null;
+    },
+    // Khách gửi đánh giá bằng link — mỗi link chỉ dùng được 1 lần
+    async submitReview(code, stars, text, name) {
+      await runTransaction(db, async (tx) => {
+        const iv = await tx.get(inviteRef(code));
+        if (!iv.exists()) throw new Error("Link đánh giá không đúng. Kiểm tra lại link shop gửi nhé.");
+        const inv = iv.data();
+        if (inv.used) throw new Error("Link này đã được dùng để đánh giá rồi. Cảm ơn bạn!");
+        const rv = await tx.get(REVIEWS);
+        if (!rv.exists()) throw new Error("Shop chưa mở phần đánh giá. Thử lại sau nhé.");
+        tx.update(REVIEWS, {
+          ["items." + code]: { costumeId: inv.costumeId, stars, text, name, plan: inv.plan || "", from: inv.from, at: serverTimestamp() },
+          last: code
+        });
+        tx.update(inviteRef(code), { used: true });
+      });
+      try { sessionStorage.removeItem("nb-reviews-cache"); } catch (e) {}
     }
   };
 
@@ -148,7 +204,7 @@ async function start() {
         if (!s.exists()) throw new Error("Chưa có dữ liệu trên Firebase.");
         const costumes = (s.data().costumes || []).map((c) => {
           if (c.id !== h.costumeId) return c;
-          const booked = (c.booked || []).concat([note ? { from: h.from, to: h.to, note } : { from: h.from, to: h.to }])
+          const booked = (c.booked || []).concat([bookedClean({ from: h.from, to: h.to, note, plan: h.plan })])
             .sort((x, y) => x.from.localeCompare(y.from));
           return Object.assign({}, c, { booked });
         });
@@ -162,6 +218,27 @@ async function start() {
         await tx.get(STATE);
         tx.update(STATE, { ["holds." + h.code]: deleteField() });
       });
+    },
+
+    /* ---------- Đánh giá (shop) ---------- */
+    async listInvites() {
+      const s = await getDocs(collection(db, "invites"));
+      return s.docs.map((d) => Object.assign({ code: d.id }, d.data()));
+    },
+    // Tạo link đánh giá cho 1 lượt thuê đã khoá
+    async createInvite(costumeId, from, to, plan) {
+      const rv = await getDoc(REVIEWS);
+      if (!rv.exists()) await setDoc(REVIEWS, { items: {}, last: "" });
+      const code = randCode(10);
+      const inv = { costumeId, from, to: to || from, plan: PLAN_OK(plan), used: false, createdAt: serverTimestamp() };
+      await setDoc(inviteRef(code), inv);
+      return Object.assign({ code }, inv);
+    },
+    watchReviews(cb) {
+      return onSnapshot(REVIEWS, (s) => cb(s.exists() ? reviewList(s.data().items) : []), (e) => console.error(e));
+    },
+    async setReviewHidden(code, hidden) {
+      await updateDoc(REVIEWS, { ["items." + code + ".hidden"]: !!hidden });
     },
 
     // Dọn giữ chỗ đã hết hạn

@@ -13,6 +13,9 @@
   let MODE = "file";          // "file" = lưu ra data.js | "firebase" = lưu lên mạng, có hiệu lực ngay
   let API = null;
   let liveHolds = [];         // các lượt khách đang giữ chỗ (Firebase)
+  let invites = [];           // link đánh giá đã tạo (Firebase)
+  let reviews = [];           // tất cả đánh giá, kể cả đã ẩn (Firebase)
+  const PLAN_NAME = { fes: "Fes", test: "Test" };
   const deletedIds = new Set();
   let dirty = false;
   const pending = new Map(); // "images/ten-file.jpg" -> File (ảnh mới chưa chép vào thư mục)
@@ -70,11 +73,15 @@
   function showTab(which) {
     $("#tabItems").setAttribute("aria-selected", which === "items");
     $("#tabShop").setAttribute("aria-selected", which === "shop");
+    $("#tabReviews").setAttribute("aria-selected", which === "reviews");
     $("#paneItems").hidden = which !== "items";
     $("#paneShop").hidden = which !== "shop";
+    $("#paneReviews").hidden = which !== "reviews";
+    if (which === "reviews") renderReviews();
   }
   $("#tabItems").onclick = () => showTab("items");
   $("#tabShop").onclick = () => showTab("shop");
+  $("#tabReviews").onclick = () => showTab("reviews");
 
   /* ---------- Thông tin shop ---------- */
   function fillShop() {
@@ -450,6 +457,100 @@
     return (c.booked || []).findIndex((b, i) => i !== skip && b.from <= to && (b.to || b.from) >= from);
   }
 
+  /* ---------- Link đánh giá cho từng lượt thuê ---------- */
+  const inviteFor = (c, b) => invites.find((v) => v.costumeId === c.id && v.from === b.from && (v.to || v.from) === (b.to || b.from));
+  const linkOf = (code) => location.origin + location.pathname.replace(/admin\.html$/, "") + "#/danh-gia/" + code;
+  function reviewCell(c, b, i) {
+    const v = inviteFor(c, b);
+    const r = v && reviews.find((x) => x.code === v.code);
+    const st = !v ? "" : r ? `<span class="rv-st is-done">Khách đã đánh giá ${"★".repeat(r.stars)}${r.hidden ? " · đang ẩn" : ""}</span>`
+      : v.used ? `<span class="rv-st is-done">Khách đã đánh giá</span>` : `<span class="rv-st">Đã tạo link · khách chưa đánh giá</span>`;
+    return `<div class="range__rv">
+      <button class="btn btn--ghost btn--sm" type="button" data-rvlink="${i}" ${r || (v && v.used) ? "hidden" : ""}>${v ? "Sao chép link đánh giá" : "Tạo link đánh giá"}</button>
+      ${st}
+    </div>`;
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+    ta.remove(); return ok;
+  }
+  async function reviewLink(c, b, btn) {
+    if (!b || !API) return;
+    if (c._origId && c._origId !== c.id) { toast("Bạn vừa đổi mã bộ đồ — bấm Lưu trước rồi mới tạo link đánh giá."); return; }
+    let v = inviteFor(c, b);
+    if (!v) {
+      btn.disabled = true; btn.textContent = "Đang tạo link…";
+      try { v = await API.createInvite(c.id, b.from, b.to || b.from, b.plan); invites.push(v); }
+      catch (e) { console.error(e); toast("Không tạo được link: " + (e.code || e.message)); btn.disabled = false; btn.textContent = "Tạo link đánh giá"; return; }
+    }
+    const link = linkOf(v.code);
+    const ok = await copyText(link);
+    const idx = btn.dataset.rvlink;
+    renderRangesKeep();
+    const newRow = $(`.range[data-row="${idx}"] .range__rv`, $("#ranges"));
+    if (newRow) {
+      const inp = document.createElement("input");
+      inp.className = "rv-linkbox"; inp.readOnly = true; inp.value = link; inp.setAttribute("aria-label", "Link đánh giá");
+      inp.onclick = () => inp.select();
+      newRow.appendChild(inp);
+    }
+    toast(ok ? "Đã sao chép link đánh giá — dán vào Messenger gửi khách nhé." : "Chưa tự sao chép được — bấm vào ô link rồi sao chép thủ công.");
+  }
+
+  // Cập nhật riêng ô "link đánh giá" của các lượt đang hiện (không vẽ lại cả form → không mất chữ đang gõ)
+  function renderRangesKeep() {
+    const c = items[sel], box = $("#ranges");
+    if (!c || !box || MODE !== "firebase") return;
+    $$(".range", box).forEach((row) => {
+      const i = +row.dataset.row, b = (c.booked || [])[i], old = $(".range__rv", row);
+      if (!b || !old) return;
+      old.outerHTML = reviewCell(c, b, i);
+      const btn = $("[data-rvlink]", row);
+      if (btn) btn.onclick = () => reviewLink(c, c.booked[i], btn);
+    });
+  }
+
+  /* ---------- Tab Đánh giá ---------- */
+  function renderReviews() {
+    const pane = $("#paneReviews");
+    if (!pane || pane.hidden) return;
+    const off = MODE !== "firebase";
+    $("#rvOff").hidden = !off;
+    $("#rvBody").hidden = off;
+    if (off) return;
+    const q = slug($("#rvQ").value.trim());
+    const vis = reviews.filter((r) => !r.hidden);
+    const avg = vis.length ? vis.reduce((a, r) => a + r.stars, 0) / vis.length : 0;
+    $("#rvSum").innerHTML = !reviews.length ? "Chưa có đánh giá nào."
+      : (vis.length ? `<b>${avg.toLocaleString("vi-VN", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}</b> ★ trung bình · ` : "") + `${vis.length} đang hiện${reviews.length > vis.length ? ` · ${reviews.length - vis.length} đã ẩn` : ""}`;
+    const nameOf = (id) => { const c = items.find((x) => x.id === id); return c ? c.name : "Mã " + id; };
+    const list = reviews.filter((r) => !q || slug(nameOf(r.costumeId) + " " + r.text + " " + r.name).includes(q));
+    $("#rvList").innerHTML = list.length ? list.map((r) => {
+      const f = parse(r.from);
+      return `<div class="rv-item ${r.hidden ? "is-hidden" : ""}">
+        <div class="rv-item__top">
+          <span class="rv-item__stars" aria-label="${r.stars} sao">${"★".repeat(r.stars)}<i>${"★".repeat(5 - r.stars)}</i></span>
+          <b>${esc(nameOf(r.costumeId))}</b>
+          ${r.hidden ? `<span class="rv-item__tag">Đang ẩn</span>` : ""}
+        </div>
+        <p class="rv-item__text">${esc(r.text)}</p>
+        <span class="rv-item__meta">${esc(r.name || "Khách đã thuê")} · ${PLAN_NAME[r.plan] ? "Thuê " + PLAN_NAME[r.plan] + " · " : ""}${f ? "lượt " + fmt(f) + "/" + f.getFullYear() : ""}${r.at ? " · gửi ngày " + fmt(new Date(r.at)) : ""}</span>
+        <button class="btn btn--ghost btn--sm" type="button" data-rvhide="${esc(r.code)}">${r.hidden ? "Hiện lại trên web" : "Ẩn khỏi web"}</button>
+      </div>`;
+    }).join("") : `<p class="hint">${q ? "Không thấy đánh giá khớp." : "Khi khách gửi đánh giá bằng link bạn gửi, đánh giá sẽ hiện ở đây và trên trang bộ đồ ngay lập tức."}</p>`;
+    $$("[data-rvhide]").forEach((b) => b.onclick = async () => {
+      const r = reviews.find((x) => x.code === b.dataset.rvhide); if (!r) return;
+      b.disabled = true;
+      try { await API.setReviewHidden(r.code, !r.hidden); toast(r.hidden ? "Đã hiện lại đánh giá." : "Đã ẩn đánh giá khỏi web."); }
+      catch (e) { console.error(e); toast("Không đổi được: " + (e.code || e.message)); b.disabled = false; }
+    });
+  }
+  $("#rvQ").addEventListener("input", renderReviews);
+
   function renderRanges(c) {
     const box = $("#ranges");
     const t = today();
@@ -467,6 +568,8 @@
         <div class="field"><label for="rt${i}">Ngày trả</label>${vnDateHtml("rt" + i, b.to || b.from, `data-r="${i}" data-f="to"`)}</div>
         <button class="icon-btn" type="button" data-rr="${i}" aria-label="Mở khoá lượt ${i + 1}" title="Mở khoá lượt này"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         <div class="field range__note"><label for="rn${i}">Ghi chú (công khai — đừng ghi SĐT)</label><input id="rn${i}" data-note="${i}" value="${esc(b.note || "")}" placeholder="VD: khách A, gửi đi Đà Nẵng"></div>
+        <div class="field range__plan"><label for="rp${i}">Mục đích</label><select id="rp${i}" data-plan="${i}"><option value="">—</option><option value="fes" ${b.plan === "fes" ? "selected" : ""}>Fes</option><option value="test" ${b.plan === "test" ? "selected" : ""}>Test</option></select></div>
+        ${MODE === "firebase" && f && e && !bad ? reviewCell(c, b, i) : ""}
       </div>`;
     }).join("") : `<p class="hint">Chưa khoá lượt nào — khách chọn được mọi ngày trong khoảng nhận đặt.</p>`;
     bindVnDate(box, (txt, v, final) => {
@@ -477,6 +580,12 @@
       if (final) { c.booked.sort((x, y) => String(x.from).localeCompare(String(y.from))); renderRanges(c); }
     });
     $$("[data-note]", box).forEach((el) => el.addEventListener("input", () => { c.booked[+el.dataset.note].note = el.value; markDirty(); }));
+    $$("[data-plan]", box).forEach((el) => el.addEventListener("change", () => {
+      const b = c.booked[+el.dataset.plan];
+      if (el.value) b.plan = el.value; else delete b.plan;
+      markDirty();
+    }));
+    $$("[data-rvlink]", box).forEach((btn) => btn.onclick = () => reviewLink(c, c.booked[+btn.dataset.rvlink], btn));
     $$("[data-rr]", box).forEach((btn) => btn.onclick = () => {
       const [b] = c.booked.splice(+btn.dataset.rr, 1);
       markDirty(); renderRanges(c); renderList(); freeHint(c);
@@ -578,7 +687,7 @@
       priceTest: Number(c.priceTest) || 0, depositTest: Number(c.depositTest) || 0, priceNote: c.priceNote || "",
       includes: c.includes || [], description: c.description || "", images: c.images || [],
       freeFrom: c.freeFrom || "", freeTo: c.freeTo || "",
-      booked: (c.booked || []).filter((b) => b.from).map((b) => (b.note ? { from: b.from, to: b.to || b.from, note: b.note } : { from: b.from, to: b.to || b.from })).sort((x, y) => x.from.localeCompare(y.from)),
+      booked: (c.booked || []).filter((b) => b.from).map((b) => Object.assign({ from: b.from, to: b.to || b.from }, b.note ? { note: b.note } : {}, PLAN_NAME[b.plan] ? { plan: b.plan } : {})).sort((x, y) => x.from.localeCompare(y.from)),
       hidden: !!c.hidden
     }));
     const stamp = new Date().toLocaleString("vi-VN");
@@ -722,7 +831,7 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
         <div class="hold__main">
           <b class="hold__code">${esc(h.code)}</b>
           <span class="hold__name">${esc(c ? c.name : h.costumeId)}</span>
-          <span class="hold__dates">${weekday(f)} ${fmt(f)} → ${weekday(t)} ${fmt(t)}</span>
+          <span class="hold__dates">${weekday(f)} ${fmt(f)} → ${weekday(t)} ${fmt(t)}${PLAN_NAME[h.plan] ? ` · <b class="hold__plan">${PLAN_NAME[h.plan]}</b>` : ""}</span>
         </div>
         <span class="hold__left">${left > 0 ? `còn ${left} phút` : "hết hạn"}</span>
         <div class="hold__act">
@@ -739,7 +848,9 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
         await API.confirmHold(h, note);
         const c = items.find((x) => x.id === h.costumeId);
         if (c) {
-          (c.booked = c.booked || []).push({ from: h.from, to: h.to, note });
+          const nb = { from: h.from, to: h.to, note };
+          if (h.plan) nb.plan = h.plan;
+          (c.booked = c.booked || []).push(nb);
           c.booked.sort((x, y) => String(x.from).localeCompare(String(y.from)));
           if (items[sel] === c) renderRanges(c);
         }
@@ -792,7 +903,7 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
   function startFirebase(api) {
     API = api; MODE = "firebase";
     const box = $("#loginBox");
-    let unsub = null, loadedFor = null;
+    let unsub = null, unsubRv = null, loadedFor = null;
     $("#loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       $("#lgErr").textContent = ""; $("#lgBtn").disabled = true;
@@ -813,6 +924,7 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
     api.onAuth(async (user) => {
       if (!user) {
         if (unsub) { unsub(); unsub = null; }
+        if (unsubRv) { unsubRv(); unsubRv = null; }
         loadedFor = null;
         box.hidden = false; adm.hidden = true; $("#logoutBtn").hidden = true; $("#liveBadge").hidden = true; $("#saveBtn").hidden = true;
         return;
@@ -839,6 +951,13 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
       api.cleanupExpired().catch(() => {});
       unsub = api.watchHolds((list) => { liveHolds = list; renderHolds(); if (items[sel]) renderMini(items[sel]); renderList(); });
       renderHolds();
+      const refreshRv = () => { renderReviews(); if (items[sel] && adm.dataset.view !== "list") renderRangesKeep(); };
+      api.listInvites().then((l) => { invites = l; refreshRv(); }).catch((e) => console.warn("[NB] link đánh giá:", e));
+      unsubRv = api.watchReviews((l) => {
+        const n = reviews.length; reviews = l;
+        refreshRv();
+        if (n && l.length > n) toast("Có đánh giá mới từ khách!");
+      });
     });
   }
 

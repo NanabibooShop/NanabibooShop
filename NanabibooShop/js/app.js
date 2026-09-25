@@ -96,6 +96,32 @@
     ALL = D.withHolds().filter((c) => !c.hidden).map((c) => Object.assign(c, { _holds: c._holds.filter((h) => !isMine(h)) }));
   }
   const isLive = () => window.NBData.mode === "firebase" && !!window.NBData.api;
+
+  /* ---------- Đánh giá ---------- */
+  let REVIEWS = null;           // null = chưa tải / không có mạng
+  let reviewsLoading = false;
+  function loadReviews(force) {
+    if (!isLive() || !window.NBData.api.loadReviews || (reviewsLoading && !force)) return;
+    reviewsLoading = true;
+    window.NBData.api.loadReviews(force).then((list) => {
+      REVIEWS = list.filter((r) => !r.hidden);
+      reviewsLoading = false;
+      if (lastRoute === "home" && $("#grid")) drawGrid();
+      if (lastRoute === "detail" && cur) drawReviews(cur.c);
+    }).catch((e) => { reviewsLoading = false; console.warn("[NB] đánh giá:", e); });
+  }
+  const reviewsOf = (id) => (REVIEWS || []).filter((r) => r.costumeId === id);
+  function ratingOf(id) {
+    const l = reviewsOf(id);
+    return l.length ? { avg: l.reduce((a, r) => a + r.stars, 0) / l.length, n: l.length } : null;
+  }
+  const avgTxt = (x) => x.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const PLAN_NAME = { fes: "Fes", test: "Test" };
+  function starsHtml(n, cls) {
+    const full = Math.round(n);
+    return `<span class="stars ${cls || ""}" role="img" aria-label="${avgTxt(n)} trên 5 sao">${"★".repeat(full)}<i>${"★".repeat(5 - full)}</i></span>`;
+  }
+  function monthOf(isoDate) { const d = parse(isoDate); return d ? String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear() : ""; }
   const hhmm = (ms) => new Date(ms).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 
   /* ---------- Footer ---------- */
@@ -279,7 +305,7 @@
         <div class="card__body">
           <span class="eyebrow">${esc(c.series)}</span>
           <h2 class="card__name">${esc(c.name)}</h2>
-          <div class="card__meta"><span class="size">Size ${esc(c.size || "—")}</span><span>${esc(c.category || "")}</span></div>
+          <div class="card__meta"><span class="size">Size ${esc(c.size || "—")}</span><span>${esc(c.category || "")}</span>${(() => { const r = ratingOf(c.id); return r ? `<span class="rating-mini" aria-label="${avgTxt(r.avg)} sao, ${r.n} đánh giá"><i>★</i>${avgTxt(r.avg)} <small>(${r.n})</small></span>` : ""; })()}</div>
           <div class="card__foot">
             <span class="status status--${s.cls}">${esc(s.label)}</span>
             <span class="card__meta">${esc(s.note)}</span>
@@ -365,6 +391,7 @@
               <span class="eyebrow">${esc(c.series)}</span>
               <h1>${esc(c.name)}</h1>
               <span class="d-code">MÃ ${esc(c.id)} · ${esc(c.category || "")}</span>
+              <a class="d-rating" id="dRating" href="#reviewsBox" hidden></a>
               <div class="d-plans">${pl.map((p) => `
                 <div class="d-plan"><span class="pricetag pricetag--${p.key}"><small>${p.label}</small>${priceLabel(p.price, true)}</span><span class="d-deposit">Cọc <b>${priceLabel(p.deposit, true)}</b></span></div>`).join("")}
               </div>
@@ -386,6 +413,8 @@
               <div><dt>Giá thuê</dt><dd><div class="price-rows">${pl.map((p) => `<span><b>${p.label}</b> <small>(${esc(p.desc.toLowerCase())})</small>: ${priceLabel(p.price)} · cọc ${priceLabel(p.deposit)}</span>`).join("")}</div>${c.priceNote ? `<p class="price-note">${esc(c.priceNote)}</p>` : ""}</dd></div>
             </dl>
           </section>
+
+          <section class="panel reviews" id="reviewsBox" aria-labelledby="revH" hidden></section>
 
           ${rest.length ? `
           <section class="gallery" aria-labelledby="galH">
@@ -449,6 +478,9 @@
     }));
     app.querySelectorAll("[data-plan]").forEach((b) => b.addEventListener("click", () => { cur.plan = b.dataset.plan; drawPlan(); drawPick(); }));
     drawPlan();
+    $("#dRating").addEventListener("click", (e) => { e.preventDefault(); $("#reviewsBox").scrollIntoView({ behavior: "smooth", block: "start" }); });
+    drawReviews(c);
+    if (REVIEWS === null) loadReviews();
     $("#bookBtn").addEventListener("click", openBooking);
     $("#dockBtn").addEventListener("click", () => {
       if (cur.win && !cur.plan) askPlan();
@@ -515,6 +547,121 @@
     }
     drawCal();
     drawPick();
+  }
+
+  function drawReviews(c, showAll) {
+    const box = $("#reviewsBox"), top = $("#dRating");
+    if (!box) return;
+    if (REVIEWS === null) { box.hidden = true; if (top) top.hidden = true; return; }
+    const list = reviewsOf(c.id), r = ratingOf(c.id);
+    box.hidden = false;
+    if (top) {
+      top.hidden = !r;
+      if (r) top.innerHTML = `${starsHtml(r.avg)}<b>${avgTxt(r.avg)}</b><span>· ${r.n} đánh giá</span>`;
+    }
+    const shown = showAll ? list : list.slice(0, 3);
+    box.innerHTML = `
+      <div class="reviews__head">
+        <h2 id="revH">Đánh giá từ khách đã thuê</h2>
+        ${r ? `<div class="reviews__sum">${starsHtml(r.avg, "stars--lg")}<b>${avgTxt(r.avg)}</b><span>/5 · ${r.n} đánh giá</span></div>` : ""}
+      </div>
+      ${list.length ? `<ul class="reviews__list">${shown.map((x) => `
+        <li class="review">
+          <div class="review__top">${starsHtml(x.stars)}<span class="review__who">${esc(x.name || "Khách đã thuê")}</span></div>
+          <p class="review__text">${esc(x.text)}</p>
+          <span class="review__meta">Đã thuê${PLAN_NAME[x.plan] ? " · " + PLAN_NAME[x.plan] : ""}${x.from ? " · tháng " + monthOf(x.from) : ""}</span>
+        </li>`).join("")}</ul>
+        ${!showAll && list.length > 3 ? `<button class="btn btn--ghost btn--block" type="button" id="revMore">Xem tất cả ${list.length} đánh giá</button>` : ""}`
+      : `<p class="panel__sub reviews__empty">Chưa có đánh giá nào. Sau khi trả đồ, khách sẽ nhận link đánh giá từ shop.</p>`}`;
+    const more = $("#revMore");
+    if (more) more.onclick = () => drawReviews(c, true);
+  }
+
+  /* =========================================================
+     TRANG ĐÁNH GIÁ (#/danh-gia/MÃ) — mở bằng link shop gửi
+     ========================================================= */
+  const STAR_WORDS = ["", "Không hài lòng", "Tạm được", "Ổn", "Hài lòng", "Rất hài lòng"];
+  let rvOffline = false;      // đang báo "chưa kết nối" → có mạng lại thì tự mở form
+  async function renderReview(code) {
+    document.body.classList.remove("has-dock");
+    document.title = "Đánh giá bộ đồ · " + (SHOP.name || "NanabibooShop");
+    const shell = (inner) => { app.innerHTML = `<a class="back" href="#/">${ICON.back} Trang chủ</a><section class="rv-page">${inner}</section>`; };
+    const msg = (title, text, extra) => shell(`<div class="panel rv-msg">${ICON.hanger}<h1>${title}</h1><p>${text}</p>${extra || ""}</div>`);
+    rvOffline = !isLive();
+    if (rvOffline) {
+      msg("Chưa kết nối được", "Phần đánh giá cần kết nối mạng. Bạn thử tải lại trang sau ít phút nhé.", `<button class="btn btn--primary" type="button" onclick="location.reload()">Tải lại trang</button>`);
+      return;
+    }
+    shell(`<div class="loading" role="status"><span class="loading__dot"></span>Đang mở link đánh giá…</div>`);
+    let inv = null;
+    try { inv = await window.NBData.api.getInvite(code); }
+    catch (e) { console.error(e); msg("Chưa mở được link", "Mạng đang chậm hoặc có lỗi. Bạn thử tải lại trang nhé.", `<button class="btn btn--primary" type="button" onclick="location.reload()">Tải lại trang</button>`); return; }
+    if (lastRoute !== "review" || location.hash.indexOf(code) < 0) return;   // khách đã chuyển trang
+    if (!inv) { msg("Link đánh giá không đúng", "Bạn kiểm tra lại link shop gửi qua Messenger nhé. Link cần được mở đầy đủ, không bị cắt mất ký tự."); return; }
+    const c = ALL.find((x) => x.id === inv.costumeId) || (window.NBData.costumes || []).find((x) => x.id === inv.costumeId) || { id: inv.costumeId, name: "Mã " + inv.costumeId, series: "", images: [] };
+    const cHref = ALL.some((x) => x.id === c.id) ? `#/do/${encodeURIComponent(c.id)}` : "#/";
+    if (inv.used) { msg("Bạn đã đánh giá rồi", "Link này đã được dùng để gửi đánh giá. Cảm ơn bạn đã ủng hộ shop!", `<a class="btn btn--primary" href="${cHref}">Xem bộ đồ</a>`); return; }
+    const f = parse(inv.from), t = parse(inv.to || inv.from);
+    shell(`
+      <form class="panel rv-form" id="rvForm" novalidate>
+        <div class="rv-costume">
+          <div class="rv-costume__img">${(c.images || [])[0] ? thumbHtml(c.images[0], c.name, { fallback: PLACEHOLDER }) : img("", c.name)}</div>
+          <div>
+            <span class="eyebrow">${esc(c.series || "")}</span>
+            <h1>${esc(c.name)}</h1>
+            <span class="rv-costume__meta">${PLAN_NAME[inv.plan] ? "Thuê " + PLAN_NAME[inv.plan] + " · " : ""}${f ? fmt(f) + (t && +t !== +f ? " → " + fmtFull(t) : "/" + f.getFullYear()) : ""}</span>
+          </div>
+        </div>
+        <fieldset class="rv-stars">
+          <legend>Bạn chấm bộ đồ này mấy sao?</legend>
+          <div class="rv-stars__row" role="radiogroup" aria-label="Số sao">
+            ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="rv-star" role="radio" aria-checked="false" data-star="${n}" aria-label="${n} sao · ${STAR_WORDS[n]}">★</button>`).join("")}
+          </div>
+          <span class="rv-stars__word" id="rvWord">Chạm vào ngôi sao để chấm</span>
+        </fieldset>
+        <div class="field">
+          <label for="rvText">Cảm nhận của bạn về bộ đồ</label>
+          <textarea id="rvText" rows="5" maxlength="1000" placeholder="VD: Đồ giống ảnh, vải mát, mặc vừa người cao 1m60. Tóc giả hơi rối một chút…"></textarea>
+          <span class="rv-count" id="rvCount">0/1000</span>
+        </div>
+        <div class="field">
+          <label for="rvName">Tên hiển thị (không bắt buộc)</label>
+          <input id="rvName" maxlength="40" autocomplete="nickname" placeholder="Để trống sẽ hiện “Khách đã thuê”">
+        </div>
+        <p class="hint" id="rvErr" role="alert"></p>
+        <button class="btn btn--primary btn--block" type="submit" id="rvSend">Gửi đánh giá</button>
+        <p class="rv-note">Đánh giá sẽ hiện ngay trên trang bộ đồ. Mỗi link chỉ gửi được một lần.</p>
+      </form>`);
+    let stars = 0;
+    const paint = (n) => document.querySelectorAll(".rv-star").forEach((b) => b.classList.toggle("is-on", +b.dataset.star <= n));
+    document.querySelectorAll(".rv-star").forEach((b) => {
+      b.addEventListener("click", () => {
+        stars = +b.dataset.star;
+        document.querySelectorAll(".rv-star").forEach((x) => x.setAttribute("aria-checked", String(+x.dataset.star === stars)));
+        paint(stars); $("#rvWord").textContent = STAR_WORDS[stars]; $("#rvErr").textContent = "";
+      });
+      b.addEventListener("mouseenter", () => paint(+b.dataset.star));
+      b.addEventListener("mouseleave", () => paint(stars));
+    });
+    $("#rvText").addEventListener("input", (e) => { $("#rvCount").textContent = e.target.value.length + "/1000"; $("#rvErr").textContent = ""; });
+    $("#rvForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = $("#rvText").value.trim(), name = $("#rvName").value.trim().slice(0, 40);
+      const err = $("#rvErr");
+      if (!stars) { err.textContent = "Bạn chọn số sao trước nhé."; $(".rv-stars").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      if (!text) { err.textContent = "Bạn viết vài dòng cảm nhận về bộ đồ nhé."; $("#rvText").focus(); return; }
+      const btn = $("#rvSend"); btn.disabled = true; btn.textContent = "Đang gửi…"; err.textContent = "";
+      try {
+        await window.NBData.api.submitReview(code, stars, text.slice(0, 1000), name);
+        loadReviews(true);
+        msg("Cảm ơn bạn đã đánh giá!", `Đánh giá ${stars} sao của bạn đã hiện trên trang bộ đồ. Hẹn gặp lại bạn ở lần thuê sau nhé!`, `<a class="btn btn--primary" href="${cHref}">Xem đánh giá của bạn</a>`);
+        scrollTo({ top: 0, behavior: "smooth" });
+      } catch (ex) {
+        console.error(ex);
+        const m = ex && ex.message && !ex.code ? ex.message : "Chưa gửi được (mạng yếu hoặc link đã được dùng). Bạn thử lại nhé.";
+        err.textContent = m; btn.disabled = false; btn.textContent = "Gửi đánh giá";
+      }
+    });
   }
 
   function drawPlan() {
@@ -630,7 +777,7 @@
         pendingHold = { costumeId: c.id, from, to };
         try {
           const minutes = Number(SHOP.holdMinutes) || 30;
-          const r = await window.NBData.api.createHold(c.id, from, to, minutes);
+          const r = await window.NBData.api.createHold(c.id, from, to, minutes, cur.plan);
           hold = { code: r.code, expiresAt: r.expiresAt, costumeId: c.id, from, to, plan: cur.plan };
           saveMyHold(hold);
           pendingHold = null;
@@ -721,8 +868,13 @@
   function route() {
     const h = location.hash || "#/";
     const m = h.match(/^#\/do\/(.+)$/);
+    const rv = h.match(/^#\/danh-gia\/([A-Za-z0-9]+)/);
     if (lastRoute === "home") home.scroll = scrollY;
-    if (m) {
+    if (rv) {
+      lastRoute = "review";
+      renderReview(rv[1].toUpperCase());
+      scrollTo({ top: 0, behavior: "instant" });
+    } else if (m) {
       renderDetail(decodeURIComponent(m[1]));
       lastRoute = "detail";
       scrollTo({ top: 0, behavior: "instant" });
@@ -755,7 +907,9 @@
   window.NBData.on((D) => {
     applyData(D);
     renderChrome();
-    if (!booted) { booted = true; route(); return; }
+    if (!booted) { booted = true; route(); loadReviews(); return; }
+    if (REVIEWS === null) loadReviews();
+    if (lastRoute === "review" && rvOffline && isLive()) { route(); return; }
     refreshLive();
   });
   // Mỗi phút: giữ chỗ hết hạn thì mở lại ngày
