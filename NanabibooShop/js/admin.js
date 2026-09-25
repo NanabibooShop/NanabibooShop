@@ -540,7 +540,10 @@
         </div>
         <p class="rv-item__text">${esc(r.text)}</p>
         <span class="rv-item__meta">${esc(r.name || "Khách đã thuê")} · ${PLAN_NAME[r.plan] ? "Thuê " + PLAN_NAME[r.plan] + " · " : ""}${f ? "lượt " + fmt(f) + "/" + f.getFullYear() : ""}${r.at ? " · gửi ngày " + fmt(new Date(r.at)) : ""}</span>
-        <button class="btn btn--ghost btn--sm" type="button" data-rvhide="${esc(r.code)}">${r.hidden ? "Hiện lại trên web" : "Ẩn khỏi web"}</button>
+        <div class="rv-item__act">
+          <button class="btn btn--ghost btn--sm" type="button" data-rvhide="${esc(r.code)}">${r.hidden ? "Hiện lại trên web" : "Ẩn khỏi web"}</button>
+          ${r.hidden ? `<button class="btn btn--danger btn--sm" type="button" data-rvdel="${esc(r.code)}">Xoá vĩnh viễn</button>` : ""}
+        </div>
       </div>`;
     }).join("") : `<p class="hint">${q ? "Không thấy đánh giá khớp." : "Khi khách gửi đánh giá bằng link bạn gửi, đánh giá sẽ hiện ở đây và trên trang bộ đồ ngay lập tức."}</p>`;
     $$("[data-rvhide]").forEach((b) => b.onclick = async () => {
@@ -549,7 +552,36 @@
       try { await API.setReviewHidden(r.code, !r.hidden); toast(r.hidden ? "Đã hiện lại đánh giá." : "Đã ẩn đánh giá khỏi web."); }
       catch (e) { console.error(e); toast("Không đổi được: " + (e.code || e.message)); b.disabled = false; }
     });
+    $$("[data-rvdel]").forEach((b) => b.onclick = () => armThen(b, "Bấm lần nữa để xoá", () => removeReviews([b.dataset.rvdel], b)));
+    const hiddenN = reviews.filter((r) => r.hidden).length;
+    $("#rvClean").hidden = !hiddenN;
+    const cb = $("#rvCleanBtn");
+    if (!cb.dataset.armed) { cb.disabled = false; cb.textContent = "Xoá tất cả đánh giá đã ẩn"; }
+    $("#rvCleanTxt").textContent = hiddenN ? `${hiddenN} đánh giá đang ẩn — xoá đi cho gọn danh sách (không khôi phục được).` : "";
   }
+  // Bấm 2 lần mới thực hiện (tránh bấm nhầm)
+  function armThen(btn, armedText, run) {
+    if (!btn.dataset.armed) {
+      btn.dataset.armed = "1"; btn.dataset.txt = btn.textContent; btn.textContent = armedText;
+      setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = btn.dataset.txt; } }, 3500);
+      return;
+    }
+    delete btn.dataset.armed;
+    run();
+  }
+  async function removeReviews(codes, btn) {
+    codes = codes.filter((c) => reviews.some((r) => r.code === c && r.hidden));   // chỉ xoá đánh giá đã ẩn
+    if (!codes.length) return;
+    btn.disabled = true; btn.textContent = "Đang xoá…";
+    try {
+      await API.deleteReviews(codes);
+      toast(codes.length > 1 ? `Đã xoá ${codes.length} đánh giá đã ẩn.` : "Đã xoá đánh giá.");
+    } catch (e) {
+      console.error(e); toast("Không xoá được: " + (e.code || e.message));
+      btn.disabled = false; btn.textContent = btn.dataset.txt || "Xoá";
+    }
+  }
+  $("#rvCleanBtn").onclick = () => armThen($("#rvCleanBtn"), "Bấm lần nữa để xoá hết", () => removeReviews(reviews.filter((r) => r.hidden).map((r) => r.code), $("#rvCleanBtn")));
   $("#rvQ").addEventListener("input", renderReviews);
 
   function renderRanges(c) {

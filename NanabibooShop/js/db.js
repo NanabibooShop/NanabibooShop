@@ -237,6 +237,11 @@ async function start() {
     watchReviews(cb) {
       return onSnapshot(REVIEWS, (s) => cb(s.exists() ? reviewList(s.data().items) : []), (e) => console.error(e));
     },
+    // Xoá hẳn các đánh giá (chỉ dùng cho đánh giá đã ẩn). Link đánh giá vẫn giữ trạng thái "đã dùng".
+    async deleteReviews(codes) {
+      if (!codes.length) return;
+      await updateDoc(REVIEWS, Object.fromEntries(codes.map((c) => ["items." + c, deleteField()])));
+    },
     async setReviewHidden(code, hidden) {
       await updateDoc(REVIEWS, { ["items." + code + ".hidden"]: !!hidden });
     },
