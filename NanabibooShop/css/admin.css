@@ -200,3 +200,6 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 6px; border-
 .rv-item__text { margin: 0; white-space: pre-line; overflow-wrap: anywhere; font-size: 14.5px; line-height: 1.5; }
 .rv-item__meta { font-size: 12.5px; color: var(--ink-3); }
 .hold__plan { color: var(--accent-2); }
+.rv-item__act { display: flex; flex-wrap: wrap; gap: 8px; justify-self: stretch; }
+.rv-clean { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-size: 13.5px; color: var(--ink-2); }
+.rv-clean[hidden] { display: none; }
