@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
+  <script>
+    // Link đánh giá / link bộ đồ lỡ mở trên trang quản lý → chuyển sang trang khách
+    if (/^#\/(danh-gia|do)\//.test(location.hash)) location.replace(new URL("./", location.href).href + location.hash);
+  </script>
   <title>Quản lý NanabibooShop</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23211A31'/%3E%3Cpath d='M32 18c0-5 7-5 7 0 0 3-7 4-7 8L12 40h40L32 26' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -139,7 +143,7 @@
   <script src="data.js"></script>
   <script src="js/common.js?v=5"></script>
   <script src="js/firebase-config.js?v=5"></script>
-  <script src="js/admin.js?v=5"></script>
+  <script src="js/admin.js?v=6"></script>
   <script type="module" src="js/db.js?v=5"></script>
 </body>
 </html>
