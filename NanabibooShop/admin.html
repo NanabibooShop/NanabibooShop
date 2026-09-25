@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=4">
-  <link rel="stylesheet" href="css/admin.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/admin.css?v=5">
 </head>
 <body class="admin">
   <header class="topbar">
@@ -64,6 +64,7 @@
     <nav class="tabs" role="tablist" aria-label="Mục quản lý">
       <button class="tab" role="tab" id="tabItems" aria-selected="true" type="button">Bộ đồ</button>
       <button class="tab" role="tab" id="tabShop" aria-selected="false" type="button">Thông tin shop</button>
+      <button class="tab" role="tab" id="tabReviews" aria-selected="false" type="button">Đánh giá</button>
     </nav>
 
     <!-- Danh sách bộ đồ + form sửa -->
@@ -107,6 +108,20 @@
       <div class="field"><label for="sPolicy">Luật thuê của shop — ghim ở đầu trang chủ (mỗi dòng là một điều)</label><textarea id="sPolicy" data-shop="policy" rows="12" placeholder="# Cách cọc đồ&#10;Cọc giữ đồ trước khi nhận.&#10;# Quy định trả đồ&#10;Trả đồ đúng hẹn; trễ tính thêm 1 ngày thuê.&#10;…"></textarea></div>
       <p class="hint">Mỗi dòng là một điều. Dòng tiêu đề nhóm: bắt đầu bằng <b>#</b> hoặc <b>👉</b>, hoặc viết HOA và kết thúc bằng dấu <b>:</b> (VD “👉 CÁCH CỌC ĐỒ KHI THUÊ:”). Trang chủ chỉ hiện khung tóm tắt, khách bấm vào để đọc đầy đủ theo từng nhóm. Số tài khoản (dãy từ 8 số trở lên) sẽ có nút “Sao chép STK”.</p>
     </section>
+
+    <!-- Đánh giá của khách -->
+    <section class="panel adm-reviews" id="paneReviews" hidden>
+      <h2>Đánh giá của khách</h2>
+      <p class="hint" id="rvOff" hidden>Phần đánh giá cần kết nối Firebase và đăng nhập.</p>
+      <div id="rvBody">
+        <p class="panel__sub">Cách lấy đánh giá: vào <b>Bộ đồ</b> → mục <b>Các lượt đã khoá</b> → bấm <b>Tạo link đánh giá</b> ở lượt thuê đó → dán link vào Messenger gửi khách. Mỗi link chỉ dùng được 1 lần. Khách gửi xong, đánh giá hiện ngay trên web; bạn có thể <b>ẩn</b> đánh giá spam hoặc có từ ngữ không phù hợp.</p>
+        <div class="rv-bar">
+          <span class="rv-sum" id="rvSum"></span>
+          <input id="rvQ" type="search" placeholder="Tìm theo tên đồ, nội dung…" autocomplete="off" aria-label="Tìm đánh giá">
+        </div>
+        <div class="rv-list" id="rvList"></div>
+      </div>
+    </section>
   </main>
 
   <!-- Hộp lưu -->
@@ -122,9 +137,9 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="data.js"></script>
-  <script src="js/common.js?v=4"></script>
-  <script src="js/firebase-config.js?v=4"></script>
-  <script src="js/admin.js?v=4"></script>
-  <script type="module" src="js/db.js?v=4"></script>
+  <script src="js/common.js?v=5"></script>
+  <script src="js/firebase-config.js?v=5"></script>
+  <script src="js/admin.js?v=5"></script>
+  <script type="module" src="js/db.js?v=5"></script>
 </body>
 </html>

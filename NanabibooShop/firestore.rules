@@ -10,15 +10,17 @@ service cloud.firestore {
         && request.auth.token.email in ["EMAIL_ADMIN@gmail.com"];
     }
 
-    // Một lượt giữ chỗ hợp lệ: tối đa 3 tiếng
+    // Một lượt giữ chỗ hợp lệ: tối đa 3 tiếng, mục đích thuê (plan) là fes / test hoặc bỏ trống
     function validHold(h) {
       return h is map
-        && h.keys().hasOnly(["costumeId", "from", "to", "exp"])
+        && h.keys().hasOnly(["costumeId", "from", "to", "exp", "plan"])
+        && h.keys().hasAll(["costumeId", "from", "to", "exp"])
         && h.costumeId is string && h.from is string && h.to is string
         && h.from.size() == 10 && h.to.size() == 10
         && h.exp is timestamp
         && h.exp > request.time
-        && h.exp < request.time + duration.value(3, "h");
+        && h.exp < request.time + duration.value(3, "h")
+        && (!("plan" in h) || h.plan in ["fes", "test"]);
     }
 
     // Khách chỉ được THÊM đúng 1 lượt giữ chỗ mới, không sửa / xoá gì khác
@@ -35,11 +37,58 @@ service cloud.firestore {
         && validHold(after.holds[code]);
     }
 
-    // public/state: thông tin shop + bộ đồ + giữ chỗ. Ai cũng xem được.
+    // Đánh giá hợp lệ: đúng thông tin của link, 1–5 sao, cảm nhận 1–1000 ký tự, tên tối đa 40 ký tự
+    function validReview(r, inv) {
+      return r is map
+        && r.keys().hasOnly(["costumeId", "stars", "text", "name", "plan", "from", "at"])
+        && r.keys().hasAll(["costumeId", "stars", "text", "name", "plan", "from", "at"])
+        && r.costumeId == inv.costumeId
+        && r.plan == inv.plan
+        && r.from == inv.from
+        && r.stars is int && r.stars >= 1 && r.stars <= 5
+        && r.text is string && r.text.size() >= 1 && r.text.size() <= 1000
+        && r.name is string && r.name.size() <= 40
+        && r.at == request.time;
+    }
+
+    // Khách chỉ được THÊM đúng 1 đánh giá, bằng 1 link chưa dùng (và đánh dấu link đã dùng cùng lúc)
+    function isNewReview() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let code = after.last;
+      let d = after.items.diff(before.items);
+      let invPath = /databases/$(database)/documents/invites/$(code);
+      return after.diff(before).affectedKeys().hasOnly(["items", "last"])
+        && code is string && code.size() >= 8 && code.size() <= 20
+        && d.addedKeys() == [code].toSet()
+        && d.changedKeys().size() == 0
+        && d.removedKeys().size() == 0
+        && exists(invPath)
+        && get(invPath).data.used == false
+        && getAfter(invPath).data.used == true
+        && validReview(after.items[code], get(invPath).data);
+    }
+
+    // public/state: thông tin shop + bộ đồ + giữ chỗ. public/reviews: đánh giá. Ai cũng xem được.
     match /public/{docId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (docId == "state" && isNewHold());
+      allow update: if isAdmin()
+        || (docId == "state" && isNewHold())
+        || (docId == "reviews" && isNewReview());
+    }
+
+    // Link đánh giá: ai có đúng mã thì mở được (không liệt kê được); chỉ shop tạo / xoá.
+    // Khách chỉ được đổi used: false → true, đồng thời với việc thêm đánh giá của chính link đó.
+    match /invites/{code} {
+      allow get: if true;
+      allow list, create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        resource.data.used == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["used"])
+        && request.resource.data.used == true
+        && code in getAfter(/databases/$(database)/documents/public/reviews).data.items
+      );
     }
   }
 }
