@@ -31,7 +31,7 @@
      Giá là giá cả lượt thuê theo bảng giá của shop (không nhân số ngày).
      Giá = 0 → hiện "Liên hệ". Dữ liệu cũ (price/deposit) được hiểu là giá Fes. */
   const PLANS = [
-    { key: "fes", label: "Fes", desc: "Đi sự kiện, lễ hội" },
+    { key: "fes", label: "Fes/Shoot", desc: "Đi sự kiện, chụp ảnh" },
     { key: "test", label: "Test", desc: "Thử tại nhà, không mang ra ngoài" }
   ];
   function plans(c) {

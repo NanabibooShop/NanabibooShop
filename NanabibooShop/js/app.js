@@ -116,7 +116,7 @@
     return l.length ? { avg: l.reduce((a, r) => a + r.stars, 0) / l.length, n: l.length } : null;
   }
   const avgTxt = (x) => x.toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const PLAN_NAME = { fes: "Fes", test: "Test" };
+  const PLAN_NAME = { fes: "Fes/Shoot", test: "Test" };
   function starsHtml(n, cls) {
     const full = Math.round(n);
     return `<span class="stars ${cls || ""}" role="img" aria-label="${avgTxt(n)} trên 5 sao">${"★".repeat(full)}<i>${"★".repeat(5 - full)}</i></span>`;
@@ -673,7 +673,7 @@
     if (!box) return;
     box.scrollIntoView({ behavior: "smooth", block: "center" });
     box.classList.remove("is-nudge"); void box.offsetWidth; box.classList.add("is-nudge");
-    toast("Chọn mục đích thuê: Fes hoặc Test nhé");
+    toast("Chọn mục đích thuê: Fes/Shoot hoặc Test nhé");
   }
   const planOf = () => (cur.plan ? cur.pl.find((p) => p.key === cur.plan) : null);
 
@@ -690,7 +690,7 @@
       sum.hidden = true;
       $("#bookBtn").disabled = true;
       const p0 = planOf();
-      $("#dockTxt").innerHTML = `<b>${p0 ? p0.label + " · " + priceLabel(p0.price, true) : cur.pl.map((p) => p.label + " " + priceLabel(p.price, true)).join(" · ")}</b>${!cur.win ? "Chưa có lịch trống" : p0 ? "Chọn ngày để chốt thuê" : "Chọn Fes/Test và ngày thuê"}`;
+      $("#dockTxt").innerHTML = `<b>${p0 ? p0.label + " · " + priceLabel(p0.price, true) : cur.pl.map((p) => p.label + " " + priceLabel(p.price, true)).join(" · ")}</b>${!cur.win ? "Chưa có lịch trống" : p0 ? "Chọn ngày để chốt thuê" : "Chọn Fes/Shoot hoặc Test và ngày thuê"}`;
       return;
     }
     const n = diffDays(start, end) + 1;
@@ -698,7 +698,7 @@
     const mh = findMyHold(c.id, iso(start), iso(end));
     hint.textContent = mh ? `Bạn đang giữ chỗ các ngày này đến ${hhmm(mh.expiresAt)} (mã ${mh.code}). Bấm "Chốt thuê" để mở lại tin nhắn.`
       : picking ? (n === 1 ? "Thuê 1 ngày. Muốn thuê thêm thì chạm vào ngày trả đồ." : "Có thể chạm ngày khác để đổi ngày trả.") : "Chạm vào lịch để chọn lại từ đầu.";
-    if (!p && !mh) hint.textContent = "Chọn mục đích thuê (Fes hoặc Test) ở phía trên lịch để xem giá.";
+    if (!p && !mh) hint.textContent = "Chọn mục đích thuê (Fes/Shoot hoặc Test) ở phía trên lịch để xem giá.";
     sum.hidden = false;
     sum.innerHTML = p ? `
       <div><span>Mục đích</span><b>${p.label} · ${esc(p.desc)}</b></div>
@@ -707,10 +707,10 @@
       <div class="total"><span>Giá thuê ${p.label}</span><b>${priceLabel(p.price)}</b></div>
       ${c.priceNote ? `<p class="price-note">${esc(c.priceNote)}</p>` : ""}`
       : `<div><span>Thời gian</span><b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày</b></div>
-      <div class="total"><span>Giá thuê</span><b>Chọn Fes / Test</b></div>`;
+      <div class="total"><span>Giá thuê</span><b>Chọn Fes/Shoot hoặc Test</b></div>`;
     $("#bookBtn").disabled = false;
     $("#dockTxt").innerHTML = p ? `<b>${p.label} · ${priceLabel(p.price)}</b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày`
-      : `<b>Chọn Fes hoặc Test</b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày`;
+      : `<b>Chọn Fes/Shoot hoặc Test</b>${fmt(start)}${n > 1 ? " → " + fmt(end) : ""} · ${n} ngày`;
   }
 
   function buildMessage(hold) {

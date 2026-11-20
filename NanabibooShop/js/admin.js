@@ -15,7 +15,7 @@
   let liveHolds = [];         // các lượt khách đang giữ chỗ (Firebase)
   let invites = [];           // link đánh giá đã tạo (Firebase)
   let reviews = [];           // tất cả đánh giá, kể cả đã ẩn (Firebase)
-  const PLAN_NAME = { fes: "Fes", test: "Test" };
+  const PLAN_NAME = { fes: "Fes/Shoot", test: "Test" };
   const deletedIds = new Set();
   let dirty = false;
   const pending = new Map(); // "images/ten-file.jpg" -> File (ảnh mới chưa chép vào thư mục)
@@ -187,7 +187,7 @@
           <p class="hint">Giá cả lượt thuê theo bảng giá của shop (không nhân số ngày). Để 0 → khách thấy "Liên hệ".</p>
           <div class="price-grid">
             <span class="price-grid__h"></span><span class="price-grid__h">Giá thuê (đ)</span><span class="price-grid__h">Tiền cọc (đ)</span>
-            <span class="price-grid__lbl"><b>Fes</b><small>Đi sự kiện</small></span>
+            <span class="price-grid__lbl"><b>Fes/Shoot</b><small>Sự kiện, chụp ảnh</small></span>
             <input id="ePriceFes" aria-label="Giá thuê Fes" data-k="priceFes" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.priceFes)}">
             <input id="eDepFes" aria-label="Tiền cọc Fes" data-k="depositFes" data-num type="number" min="0" step="1000" inputmode="numeric" value="${esc(c.depositFes)}">
             <span class="price-grid__lbl"><b>Test</b><small>Thử tại nhà</small></span>
@@ -724,7 +724,7 @@
         <div class="field"><label for="rt${i}">Ngày trả</label>${vnDateHtml("rt" + i, b.to || b.from, `data-r="${i}" data-f="to"`)}</div>
         <button class="icon-btn" type="button" data-rr="${i}" aria-label="Mở khoá lượt ${i + 1}" title="Mở khoá lượt này"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         <div class="field range__note"><label for="rn${i}">Ghi chú (công khai — đừng ghi SĐT)</label><input id="rn${i}" data-note="${i}" value="${esc(b.note || "")}" placeholder="VD: khách A, gửi đi Đà Nẵng"></div>
-        <div class="field range__plan"><label for="rp${i}">Mục đích</label><select id="rp${i}" data-plan="${i}"><option value="">—</option><option value="fes" ${b.plan === "fes" ? "selected" : ""}>Fes</option><option value="test" ${b.plan === "test" ? "selected" : ""}>Test</option></select></div>
+        <div class="field range__plan"><label for="rp${i}">Mục đích</label><select id="rp${i}" data-plan="${i}"><option value="">—</option><option value="fes" ${b.plan === "fes" ? "selected" : ""}>Fes/Shoot</option><option value="test" ${b.plan === "test" ? "selected" : ""}>Test</option></select></div>
         ${MODE === "firebase" && f && e && !bad ? reviewCell(c, b, i) : ""}
       </div>`;
     }).join("") : `<p class="hint">Chưa khoá lượt nào — khách chọn được mọi ngày trong khoảng nhận đặt.</p>`;
