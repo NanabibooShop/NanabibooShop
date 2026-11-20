@@ -190,7 +190,22 @@
     return `<img src="${esc(url || opt.fallback || "")}" alt="${esc(alt)}"${lazy} decoding="async"${fallback}>`;
   }
 
-  window.NB = { media, isImage, thumbHtml, parse, iso, addDays, today, diffDays, fmt, fmtFull, weekday, money, moneyShort, plans, priceLabel, dayState, availability, checkRange, freeWindow, bookingOn, holdOn, cleaningOn, vnToIso, isoToVn, esc };
+  /* ---------- Ảnh vừa tải lên GitHub ----------
+     Ảnh mới cần ~1 phút để Cloudflare đưa lên web. Trong lúc đó, nếu ảnh images/… chưa có
+     thì tự lấy tạm bản gốc trên GitHub → khách thấy ảnh ngay. */
+  const REPO = { owner: "NanabibooShop", repo: "NanabibooShop", branch: "main", dir: "NanabibooShop" };
+  const RAW_BASE = `https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.dir}/`;
+  document.addEventListener("error", (e) => {
+    const el = e.target;
+    if (!el || (el.tagName !== "IMG" && el.tagName !== "VIDEO") || el.dataset.rawTried) return;
+    const src = el.getAttribute("src") || "";
+    if (!/^images\//.test(src)) return;
+    el.dataset.rawTried = "1";
+    e.stopPropagation();          // không cho onerror khác đổi sang ảnh trống
+    el.src = RAW_BASE + src;
+  }, true);
+
+  window.NB = { REPO, RAW_BASE, media, isImage, thumbHtml, parse, iso, addDays, today, diffDays, fmt, fmtFull, weekday, money, moneyShort, plans, priceLabel, dayState, availability, checkRange, freeWindow, bookingOn, holdOn, cleaningOn, vnToIso, isoToVn, esc };
 
   /* ---------- Kho dữ liệu dùng chung ----------
      Mặc định lấy từ data.js. Nếu đã kết nối Firebase (js/db.js) thì dữ liệu được thay bằng bản trên mạng

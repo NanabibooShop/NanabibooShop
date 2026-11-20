@@ -19,6 +19,7 @@
   const deletedIds = new Set();
   let dirty = false;
   const pending = new Map(); // "images/ten-file.jpg" -> File (ảnh mới chưa chép vào thư mục)
+  const upState = new Map(); // "images/…" -> "up" | "ok" | "err" (đang tải / đã lên GitHub / lỗi)
   const blobUrl = new Map();
   let dirHandle = null;
 
@@ -359,30 +360,139 @@
     });
     if (!list.length) return;
     c.images = c.images || [];
-    for (const f of list) {
+    const direct = !!ghToken();
+    const stamp = Date.now().toString(36);
+    list.forEach((f, k) => {
       const dot = f.name.lastIndexOf(".");
-      const base = slug(dot > 0 ? f.name.slice(0, dot) : f.name) || "anh";
-      const ext = (dot > 0 ? f.name.slice(dot + 1) : "jpg").toLowerCase();
-      let path = `images/${slug(c.id)}-${base}.${ext}`, n = 2;
+      const base = (slug(dot > 0 ? f.name.slice(0, dot) : f.name) || "anh").slice(0, 40);
+      const isVid = f.type.startsWith("video/") || /\.(mp4|webm|mov|m4v)$/i.test(f.name);
+      let ext = (dot > 0 ? f.name.slice(dot + 1) : "jpg").toLowerCase();
+      if (direct && !isVid && canShrink(f)) ext = "jpg";        // ảnh sẽ được nén lại thành .jpg
+      // Tên file có thêm mã thời gian → không bao giờ trùng file cũ trên GitHub
+      let path = `images/${slug(c.id)}-${base}${direct ? "-" + stamp + (list.length > 1 ? k + 1 : "") : ""}.${ext}`, n = 2;
       while (pending.has(path) || c.images.includes(path)) path = `images/${slug(c.id)}-${base}-${n++}.${ext}`;
-      pending.set(path, f);
       blobUrl.set(path, URL.createObjectURL(f));
       c.images.push(path);
-      const isVid = f.type.startsWith("video/") || /\.(mp4|webm|mov|m4v)$/i.test(f.name);
-      if (isVid && f.size > 20 * MB) toast(`Clip “${f.name}” nặng ${Math.round(f.size / MB)}MB — khách dùng 4G sẽ load chậm, nên nén xuống dưới 20MB.`);
-      else if (!isVid && f.size > 800 * 1024) toast(`Ảnh “${f.name}” khá nặng (${Math.round(f.size / 1024)}KB) — nên nén bớt để web load nhanh.`);
-    }
+      if (direct) { upState.set(path, "up"); queueUpload(path, f, isVid); }
+      else {
+        pending.set(path, f);
+        if (isVid && f.size > 20 * MB) toast(`Clip “${f.name}” nặng ${Math.round(f.size / MB)}MB — khách dùng 4G sẽ load chậm, nên nén xuống dưới 20MB.`);
+        else if (!isVid && f.size > 800 * 1024) toast(`Ảnh “${f.name}” khá nặng (${Math.round(f.size / 1024)}KB) — nên nén bớt để web load nhanh.`);
+      }
+    });
+    if (list.some((f) => /hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name))) toast("Ảnh HEIC (iPhone) nhiều máy không xem được — nên chụp màn hình hoặc xuất ảnh sang JPG rồi tải lại.");
+    if (!direct && !("showDirectoryPicker" in window)) toast("Máy này chưa bật “Tải ảnh thẳng lên web” — vào tab Thông tin shop để dán mã GitHub, nếu không ảnh sẽ không hiện cho khách.");
     markDirty(); renderImgs(c); renderList();
   }
+
+  /* ---------- Tải ảnh / clip thẳng lên GitHub (web tự cập nhật sau ~1 phút) ---------- */
+  const GH_KEY = "nb-gh-token";
+  const REPO = window.NB.REPO;
+  function ghToken() { try { return localStorage.getItem(GH_KEY) || ""; } catch (e) { return ""; } }
+  const ghApi = (path, opt) => fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.repo}${path}`, Object.assign({}, opt, {
+    headers: Object.assign({ Accept: "application/vnd.github+json", Authorization: "Bearer " + ghToken(), "X-GitHub-Api-Version": "2022-11-28" }, (opt && opt.headers) || {})
+  }));
+  const canShrink = (f) => /^image\/(jpeg|png|webp|bmp)$/i.test(f.type) || /\.(jpe?g|png|webp|bmp)$/i.test(f.name);
+  // Nén ảnh: cạnh dài tối đa 1600px, JPEG 85% → nhẹ, load nhanh trên 4G
+  async function shrink(f) {
+    if (!canShrink(f)) return f;
+    try {
+      const bmp = await createImageBitmap(f);
+      const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(bmp, 0, 0, w, h);
+      bmp.close && bmp.close();
+      const out = await new Promise((res) => cv.toBlob(res, "image/jpeg", 0.85));
+      return out && (out.size < f.size || k < 1) ? out : (/jpe?g$/i.test(f.type) ? f : out || f);
+    } catch (e) { console.warn("[NB] không nén được ảnh, tải bản gốc:", e); return f; }
+  }
+  const toB64 = (blob) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1]);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(blob);
+  });
+  let upChain = Promise.resolve();
+  const upFiles = new Map();   // path -> File gốc (để thử lại khi lỗi)
+  function queueUpload(path, f, isVid) {
+    upFiles.set(path, { f, isVid });
+    upChain = upChain.then(() => uploadOne(path)).catch(() => {});
+    return upChain;
+  }
+  async function uploadOne(path) {
+    const job = upFiles.get(path); if (!job) return;
+    upState.set(path, "up"); refreshImgs();
+    try {
+      const blob = job.isVid ? job.f : await shrink(job.f);
+      if (blob.size > 45 * 1024 * 1024) throw new Error(`file nặng ${Math.round(blob.size / 1048576)}MB — tối đa 45MB. Hãy nén clip hoặc đăng TikTok/YouTube rồi dán link`);
+      const body = JSON.stringify({ message: "Them anh " + path.split("/").pop(), content: await toB64(blob), branch: REPO.branch });
+      let r;
+      for (let t = 0; t < 3; t++) {     // 409 = vừa có lượt tải khác cùng lúc → thử lại
+        r = await ghApi(`/contents/${REPO.dir}/${path}`, { method: "PUT", body });
+        if (r.status !== 409) break;
+        await new Promise((ok) => setTimeout(ok, 1200));
+      }
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(r.status === 401 ? "mã GitHub sai hoặc đã hết hạn" : r.status === 403 || r.status === 404 ? "mã GitHub chưa có quyền ghi vào repo NanabibooShop (Contents: Read and write)" : r.status === 422 && /sha/i.test(j.message || "") ? "đã có file trùng tên" : (j.message || "lỗi " + r.status));
+      }
+      upState.set(path, "ok"); upFiles.delete(path); pending.delete(path);
+      const left = [...upState.values()].filter((s) => s === "up").length;
+      if (!left) toast(dirty ? "Ảnh đã lên web ✓ — bấm Lưu để khách thấy." : "Ảnh đã lên web ✓");
+    } catch (e) {
+      console.error(e);
+      upState.set(path, "err");
+      toast("Không tải được ảnh lên: " + (e.message || e) + ". Bấm vào ảnh lỗi để thử lại.");
+    }
+    refreshImgs();
+  }
+  const uploading = () => [...upState.values()].some((s) => s === "up");
+  function refreshImgs() { const c = items[sel]; if (c && $("#imgs")) renderImgs(c); }
+
+  // Ô cài mã GitHub (tab Thông tin shop)
+  function ghShow(msg, warn) {
+    const has = !!ghToken();
+    $("#ghStatus").textContent = msg || (has ? "Đã bật: ảnh chọn từ máy này sẽ tự lên web." : "Chưa bật trên máy này.");
+    $("#ghStatus").classList.toggle("hint--warn", !!warn);
+    $("#ghClear").hidden = !has;
+    $("#ghBox").classList.toggle("is-on", has && !warn);
+    $("#ghToken").placeholder = has ? "Đã lưu mã •••• (dán mã mới để thay)" : "github_pat_…";
+  }
+  $("#ghSave").onclick = async () => {
+    const t = $("#ghToken").value.trim();
+    if (!t && !ghToken()) { ghShow("Dán mã GitHub vào ô trước nhé.", true); return; }
+    const old = ghToken();
+    try { if (t) localStorage.setItem(GH_KEY, t); } catch (e) { ghShow("Trình duyệt không cho lưu mã (chế độ ẩn danh?).", true); return; }
+    $("#ghSave").disabled = true; ghShow("Đang kiểm tra…");
+    try {
+      const r = await ghApi("");
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401) throw new Error("Mã sai hoặc đã hết hạn.");
+      if (!r.ok) throw new Error("Mã này chưa được cấp quyền vào repo NanabibooShop/NanabibooShop.");
+      if (j.permissions && !j.permissions.push) throw new Error("Mã chỉ có quyền xem — cần quyền Contents: Read and write.");
+      $("#ghToken").value = "";
+      ghShow("Đã bật ✓ Ảnh chọn từ máy này sẽ tự nén và lên web sau khoảng 1 phút.");
+    } catch (e) {
+      try { if (old) localStorage.setItem(GH_KEY, old); else localStorage.removeItem(GH_KEY); } catch (x) {}
+      ghShow(e.message || "Không kiểm tra được mã.", true);
+    } finally { $("#ghSave").disabled = false; }
+  };
+  $("#ghClear").onclick = () => { try { localStorage.removeItem(GH_KEY); } catch (e) {} ghShow("Đã xoá mã khỏi máy này."); };
+  ghShow();
 
   function renderImgs(c) {
     const box = $("#imgs");
     const imgs = c.images || [];
     box.innerHTML = imgs.length ? imgs.map((p, i) => `
-      <div class="imgc">
+      <div class="imgc" data-path="${esc(p)}">
         <div class="imgc__th">${thumbHtml(p, "", { url: srcOf(p) })}</div>
         ${i === 0 ? `<span class="imgc__tag">ẢNH BÌA</span>` : ""}
-        ${pending.has(p) ? `<span class="imgc__new">MỚI</span>` : ""}
+        ${upState.get(p) === "up" ? `<span class="imgc__up">Đang tải lên…</span>`
+          : upState.get(p) === "ok" ? `<span class="imgc__new">ĐÃ LÊN WEB</span>`
+          : upState.get(p) === "err" ? `<button type="button" class="imgc__err" data-retry="${esc(p)}">Lỗi · thử lại ↻</button>`
+          : pending.has(p) ? `<span class="imgc__new">MỚI</span>` : ""}
+        <span class="imgc__miss" hidden>THIẾU FILE — xoá ảnh này rồi tải lại</span>
         <span class="imgc__path">${esc(p)}</span>
         <div class="imgc__bar">
           <button type="button" data-mv="-1" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Lên trước">←</button>
@@ -395,7 +505,20 @@
       [imgs[i], imgs[j]] = [imgs[j], imgs[i]]; markDirty(); renderImgs(c); renderList();
     });
     $$("[data-rm]", box).forEach((b) => b.onclick = () => {
-      const [p] = imgs.splice(+b.dataset.rm, 1); pending.delete(p); markDirty(); renderImgs(c); renderList();
+      const [p] = imgs.splice(+b.dataset.rm, 1); pending.delete(p); upFiles.delete(p); upState.delete(p); markDirty(); renderImgs(c); renderList();
+    });
+    $$("[data-retry]", box).forEach((b) => b.onclick = () => { if (!ghToken()) { toast("Chưa có mã GitHub trên máy này — vào tab Thông tin shop."); return; } queueUpload(b.dataset.retry, upFiles.get(b.dataset.retry).f, upFiles.get(b.dataset.retry).isVid); });
+    // Ảnh images/… không có trên web lẫn GitHub → báo "thiếu file" (thường do ảnh chưa từng được upload)
+    $$(".imgc", box).forEach((el) => {
+      const p = el.dataset.path;
+      if (!/^images\//.test(p) || blobUrl.has(p) || !window.NB.isImage(p)) return;
+      const probe = new Image();
+      probe.onerror = () => {
+        const raw = new Image();
+        raw.onerror = () => { el.classList.add("is-missing"); const m = $(".imgc__miss", el); if (m) m.hidden = false; };
+        raw.src = window.NB.RAW_BASE + p;
+      };
+      probe.src = p;
     });
   }
 
@@ -746,6 +869,11 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
       body.innerHTML = `<p class="hint hint--warn">Sửa mấy chỗ này trước khi lưu:</p><ul class="save-list">${errs.map((e) => `<li>${esc(e)}</li>`).join("")}</ul>`;
       saveSheet.showModal(); return;
     }
+    if (uploading()) {
+      const btn = $("#saveBtn"); btn.disabled = true; btn.textContent = "Đợi ảnh tải lên…";
+      await upChain;
+      btn.disabled = false; btn.textContent = "Lưu";
+    }
     if (MODE === "firebase") { await saveOnline(); return; }
     const canFs = "showDirectoryPicker" in window;
     const imgs = [...pending.keys()];
@@ -836,6 +964,7 @@ window.COSTUMES = ${JSON.stringify(cleanItems, null, 2)};
         <p class="hint">Thông tin đã lên web. Riêng <b>${imgs.length} ảnh/clip mới</b> cần nằm trong thư mục <code>images/</code> của shop rồi upload lên GitHub thì khách mới thấy:</p>
         <ul class="save-list">${imgs.map((p) => `<li><code>${esc(p)}</code> ← ${esc(pending.get(p).name)}</li>`).join("")}</ul>
         ${canFs ? `<button class="btn btn--primary btn--sm" type="button" id="saveFs">${dirHandle ? "Lưu ảnh vào " + esc(dirHandle.name) : "Chọn thư mục shop & lưu ảnh"}</button>` : `<p class="hint">Máy này không tự lưu ảnh được — chép tay các ảnh trên vào thư mục <code>images/</code> với đúng tên.</p>`}
+        <p class="hint"><b>Cách nhanh nhất:</b> vào tab <b>Thông tin shop</b> → mục <b>Tải ảnh / clip thẳng lên web</b>, dán mã GitHub. Sau đó xoá các ảnh trên rồi chọn lại — ảnh sẽ tự lên web, dùng được cả trên điện thoại.</p>
         <p class="hint">Mẹo: dán link ảnh/clip (TikTok, YouTube, ảnh đã đăng) thì không cần upload.</p>
       </div>`;
     saveSheet.showModal();
