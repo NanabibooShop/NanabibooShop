@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap">
   <link rel="stylesheet" href="css/style.css?v=5">
-  <link rel="stylesheet" href="css/admin.css?v=7">
+  <link rel="stylesheet" href="css/admin.css?v=8">
 </head>
 <body class="admin">
   <header class="topbar">
@@ -104,6 +104,16 @@
       <div class="field"><label for="sClean">Số ngày giặt ủi sau mỗi lượt thuê (ghi chú)</label><input id="sClean" data-shop="cleaningDays" type="number" min="0" max="7" inputmode="numeric"></div>
       <p class="hint">Chỉ dùng để tô màu vàng trên lịch nhỏ trong admin, giúp bạn nhớ ngày giặt ủi. Không ảnh hưởng tới lịch khách chọn.</p>
       <div class="field"><label for="sHow">Hướng dẫn cách thuê (mỗi dòng là một bước)</label><textarea id="sHow" data-shop="howTo" rows="4"></textarea></div>
+      <div class="save-opt gh-box" id="ghBox">
+        <h3>Tải ảnh / clip thẳng lên web</h3>
+        <p>Dán <b>mã truy cập GitHub</b> (bắt đầu bằng <code>github_pat_</code>) để admin tự đưa ảnh lên web — dùng được cả trên điện thoại. Mã chỉ lưu trong trình duyệt của máy này, không gửi lên Firebase. Mỗi máy (điện thoại, máy tính) dán 1 lần.</p>
+        <div class="gh-row">
+          <input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" aria-label="Mã truy cập GitHub">
+          <button class="btn btn--primary btn--sm" type="button" id="ghSave">Lưu & kiểm tra</button>
+        </div>
+        <p class="hint" id="ghStatus"></p>
+        <button class="btn btn--ghost btn--sm" type="button" id="ghClear" hidden>Xoá mã khỏi máy này</button>
+      </div>
       <div class="save-opt">
         <h3>Bản sao lưu data.js</h3>
         <p>Khi Firebase gặp sự cố hoặc hết lượt miễn phí trong ngày, web tự dùng file <code>data.js</code>. Thỉnh thoảng (VD mỗi tuần) tải bản mới, chép đè vào thư mục shop rồi upload lên GitHub.</p>
@@ -145,9 +155,9 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="data.js"></script>
-  <script src="js/common.js?v=5"></script>
+  <script src="js/common.js?v=8"></script>
   <script src="js/firebase-config.js?v=5"></script>
-  <script src="js/admin.js?v=7"></script>
+  <script src="js/admin.js?v=8"></script>
   <script type="module" src="js/db.js?v=7"></script>
 </body>
 </html>
