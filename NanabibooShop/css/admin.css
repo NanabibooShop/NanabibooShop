@@ -203,3 +203,13 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 6px; border-
 .rv-item__act { display: flex; flex-wrap: wrap; gap: 8px; justify-self: stretch; }
 .rv-clean { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-size: 13.5px; color: var(--ink-2); }
 .rv-clean[hidden] { display: none; }
+
+/* Tải ảnh thẳng lên GitHub */
+.imgc__up { position: absolute; top: 6px; right: 6px; font-size: 10.5px; font-weight: 700; background: var(--surface); color: var(--ink-2); padding: 3px 6px; border-radius: 6px; animation: pulse 1.4s ease-in-out infinite; }
+.imgc__err { position: absolute; top: 6px; right: 6px; font: 700 10.5px/1.2 var(--f-body); background: var(--busy); color: #fff; padding: 4px 6px; border-radius: 6px; border: 0; cursor: pointer; }
+.imgc__miss { position: absolute; inset: auto 6px 70px 6px; font: 700 10.5px/1.3 var(--f-body); background: var(--busy); color: #fff; padding: 5px 6px; border-radius: 6px; text-align: center; }
+.imgc__miss[hidden] { display: none; }
+.imgc.is-missing { border-color: var(--busy); }
+.gh-box.is-on { border-color: var(--free); }
+.gh-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.gh-row input { flex: 1 1 220px; min-width: 0; height: 40px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg); padding: 0 12px; font-size: 16px; color: var(--ink); }
